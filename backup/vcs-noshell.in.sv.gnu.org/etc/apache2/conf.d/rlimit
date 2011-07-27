@@ -1,0 +1,2 @@
+# Kill buggy CGI processes
+RLimitCPU 60

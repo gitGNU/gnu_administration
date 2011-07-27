@@ -1,0 +1,115 @@
+# Test configuration for www.gnu.org - now unused since we have
+# on-commit replication.  Keep it for reference.
+<VirtualHost *:80>
+  ServerAdmin webmaster@localhost
+  ServerName www-test.gnu.org
+
+  DocumentRoot /var/www/www.gnu.org-test/
+  <Directory "/">
+    Options FollowSymLinks
+    AllowOverride None
+  </Directory>
+
+  <Directory "/var/www/www.gnu.org-test/">
+    Options Indexes IncludesNOEXEC MultiViews
+    DirectoryIndex home.shtml
+    AllowOverride None
+    Order allow,deny
+    allow from all
+  </Directory>
+
+  ErrorLog /var/log/apache2/www-test.gnu.org/error.log
+  # Possible values include: debug, info, notice, warn, error, crit,
+  # alert, emerg.
+  LogLevel warn
+  CustomLog /var/log/apache2/www-test.gnu.org/access.log combined
+
+  ##
+  # Imported from gnu.org.conf
+  ##
+
+  # We want SSI on all pages. Ward, 2006-06-27, requested by johns
+  AddHandler server-parsed .html
+
+  # See the freesoftware.fsf.org virtual host entry for information
+  RedirectMatch /non-gnu/(.*)$ http://www.freesoftware.fsf.org/$1
+  # Make sure Georg Greve home page is still reachable
+  #RedirectMatch /people/greve/(.*)$ http://gnuhh.org/$1
+  RedirectMatch /people/greve/.* http://gnuhh.org/
+  # Online ordering
+  RedirectPermanent /donate https://www.fsf.org/donate
+  RedirectPermanent /prep/mailinglists.html http://mail.gnu.org/mailman/listinfo
+  RedirectPermanent /prep/service.html http://www.fsf.org/resources/service
+  
+  # Jobs page moved to fsf.org
+  RedirectPermanent /jobs http://www.fsf.org/jobs
+  
+  RedirectPermanent /philosophy/sco http://www.fsf.org/licensing/sco
+  
+  # Redirect fsf pages to the FSF site
+  RedirectMatch /fsf/(.*)$ http://www.fsf.org/
+  RedirectPermanent /fsf/ http://www.fsf.org/
+  RedirectPermanent /fsf http://www.fsf.org/
+  
+  RewriteEngine on
+  #RewriteLog /tmp/rewrite.log
+  #RewriteLogLevel 9
+  
+  RewriteCond  %{HTTP_USER_AGENT}  ^Wget.*
+  RewriteRule ^/directory/(.*)$ - [G]
+  
+  RewriteRule ^/directory/newform.html$ /directory/newform.html [L,T=text/html]
+  
+  RewriteRule ^/directory/(.*)$ http://directory.fsf.org/$1 [R=301]
+  RewriteRule ^/directory$ http://directory.fsf.org/ [R=301]
+  
+  RewriteRule ^/licenses/info/(.*)\.html$ /directory/display-entry.py?lname=$1 [L]
+  RewriteRule ^/directory$ /directory/ [R=301] [L]
+  RewriteRule ^/directory/index.html$ /directory/display-entry.py?category=1 [L]
+  RewriteRule ^/directory/(.*)/(.*)\.html$ /directory/display-entry.py?name=$2&catname=$1 [L]
+  RewriteRule ^/directory/.+\.py.*$ - [L]
+  RewriteRule ^/directory/(.*)\.html$ /directory/display-entry.py?name=$1 [L]
+  RewriteRule ^/directory/(.*)COPYING\.DOC$ /directory/COPYING.DOC [L,T=text/plain]
+  RewriteRule ^/directory/.+\.DOC$ - [L,T=text/plain]
+  RewriteRule ^/directory/(.+)/$ /directory/display-entry.py?catname=$1 [L]
+  RewriteRule ^/directory/(.+)$ /directory/$1/ [R=301] [L]
+  RewriteRule ^/directory/$ /directory/display-entry.py?category=1 [L]
+  
+  RewriteRule ^/assembly/(.*)$ http://assembly.gnu.org/$1 [R=301]
+  RewriteRule ^/assembly$ http://assembly.gnu.org/ [R=301]
+  
+  # Special cases for savannah checkouts:
+  RewriteRule ^/brave-gnu-world(.*)$ /software/bravegw$1
+  RewriteRule ^/projects/dotgnu(.*)$ /software/dotgnu$1
+  RewriteRule ^/software/GNUnet(.*)$ /software/gnunet$1 [R=301]
+  RewriteRule ^/education(.*)$ /savannah-checkouts/gnu/education$1
+  RewriteRule ^/software/cp-tools(.*)$ /software/classpath/cp-tools$1 [R=301]
+  RewriteRule ^/gugve(.*)$ /savannah-checkouts/other/gugve$1
+  RewriteRule ^/software/ac-archive/(.*)$  http://autoconf-archive.cryp.to/$1 [R=301]
+  
+  # jag: RT#255833
+  RewriteRule ^/software/emacs/elisp/(.*)$ /software/emacs/elisp-manual/$1
+  
+  # baughj: Redirect octave ML archives to velveeta.che.wisc.edu (RT #276337)
+  
+  RewriteRule ^/software/octave/mailing-lists(.*) http://velveeta.che.wisc.edu/octave/lists$1
+  
+  
+  RewriteCond /var/www/savannah-checkouts/gnu/$1 -d
+  RewriteRule ^/software/([^/]+)(.*)$ /savannah-checkouts/gnu/$1$2
+  
+  # Classpath exception wiki.  Used to be proxied from
+  RewriteRule ^/licensing/classpath(.*)$ http://developer.classpath.org/licensing$1 [R]
+  
+  # SCO section moved from gnu.org to fsf.org.
+  
+  # hack
+  RewriteRule ^/philosophy/sco/sco.html http://www.fsf.org/licensing/sco
+  RewriteRule ^/philosophy/sco/(.*)$ http://www.fsf.org/licensing/sco/$1
+  
+  # Redirect /software/cvs to nongnu.org/cvs (RT #247259)
+  
+  RedirectPermanent /software/cvs http://www.nongnu.org/cvs
+  RewriteRule ^/software/cvs/(.*)$ http://www.nongnu.org/cvs/$1
+  
+</VirtualHost>

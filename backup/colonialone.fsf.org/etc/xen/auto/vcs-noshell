@@ -1,0 +1,48 @@
+#
+# Configuration file for the Xen instance vcs-noshell, created
+# by xen-tools 3.9 on Sat Oct 17 17:06:46 2009.
+#
+
+#
+#  Kernel + memory size
+#
+#kernel      = '/boot/vmlinuz-2.6.26-2-xen-amd64'
+#ramdisk     = '/boot/initrd.img-2.6.26-2-xen-amd64'
+# or:
+bootloader='/usr/lib/xen-3.2-1/bin/pygrub'
+
+memory      = '6144'
+cpu_weight  = '6144'
+
+#
+#  Disk device(s).
+#
+root        = '/dev/sda2 ro'
+disk        = [
+                  'phy:/dev/vg_savannah/vcs-noshell-disk,sda2,w',
+                  'phy:/dev/vg_savannah/vcs-noshell-swap,sda1,w',
+                  'file:/etc/xen/mbr/sda-vcs-noshell,sda,w',
+              ]
+
+
+#
+#  Hostname
+#
+name        = 'vcs-noshell'
+
+#
+#  Networking
+#
+#dhcp        = 'dhcp'
+#vif         = [ 'mac=00:16:3E:25:10:A1' ]
+vif  = [ 'bridge=br-in' ]
+
+#
+#  Behaviour
+#
+on_poweroff = 'destroy'
+on_reboot   = 'restart'
+on_crash    = 'restart'
+
+#extra = "4 console=hvc0 xencons=tty"
+#cpus = "1-3" # Only the dom0 should use cpu 0

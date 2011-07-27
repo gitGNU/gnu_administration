@@ -1,0 +1,2 @@
+#!/bin/bash
+rsync -qvHS --numeric-ids --delete root@savannah-backup.gnu.org:/etc/bind/ /root/20_backup-etc-bind/

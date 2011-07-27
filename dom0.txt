@@ -1,0 +1,82 @@
+# dom0 - or the host/root system, in which the guest/VMs live
+
+# FSF sysadmin:
+
+# We broke the Savannah RAID1 array into smaller chunks of 200GB each to
+# RAID-sync in a reasonable amount of time.
+
+#mdadm --create /dev/md6 --level=1 --raid-devices=3 /dev/sda6 /dev/sdd6 missing
+#mdadm --create /dev/md7 --level=1 --raid-devices=3 /dev/sda7 /dev/sdd7 missing
+#mdadm --create /dev/md8 --level=1 --raid-devices=3 /dev/sda8 /dev/sdd8 missing
+#mdadm --create /dev/md9 --level=1 --raid-devices=3 /dev/sda9 /dev/sdd9 missing
+#pvcreate /dev/md6 /dev/md7 /dev/md8 /dev/md9
+#vgcreate /dev/vg_savannah /dev/md6 /dev/md7 /dev/md8 /dev/md9
+
+# (there's no /dev/md10)
+
+# File systems created this way:
+#  for vm in builder frontend internal sftp vcs-noshell; do
+#    mkswap -L $vm-swap /dev/vg_savannah/$vm-swap
+#    mkfs.ext3 -O sparse_super -L $vm-disk /dev/vg_savannah/$vm-disk 
+#    tune2fs -c -1 -m 0 -i 0 /dev/vg_savannah/$vm-disk
+#  done
+
+# Note: not sure it's a good idea to prevent Xen from fsck'ing the
+# disks, nor about dropping superuser-reserved 5%.
+
+
+# /etc/snmp/snmpd.conf
+# mdadm
+# Check that notifications are sent to both Savannah Hackers and FSF Sysadmins
+#sed -i -e 's/AUTOCHECK=.*/# Caused troubles when it happened during the backup\nAUTOCHECK=false/' /etc/default/mdadm
+
+#file: /etc/xen/auto/
+#file: /etc/xen/disabled/
+# Disable snapshotting on shutdown:
+sed -i -e 's,XENDOMAINS_SAVE="",XENDOMAINS_SAVE=/var/lib/xen/save,'
+# Configure /etc/xen/xend-config.sxp to work with virt-manager
+# [(xend-unix-server yes)], and disable use of 'peth0'
+# [(network-script network-dummy)]; not sure what FSF sysadmin
+# configure, so backing it up:
+#file: /etc/xen/xend-config.sxp
+
+# TODO: Rebuild /etc/xen/mbr/ by script
+# (empty fake MBRs to fool GRUB in the VMs)
+
+
+apt-get install ntp
+# Install /root/.ssh/authorized_keys (confidential)
+
+# file: /root/remote_backup.sh
+# file: /root/.profile
+
+apt-get install diffmon
+# file: /etc/diffmon/diffmon.cf
+
+# file: /etc/cron.daily/backup-bind
+
+# file: /etc/aliases
+sed -i -e 's/^root:.*/root: sysadmin@gnu.org, savannah-reports-private@gnu.org, root/' /etc/aliases
+# Aliases @savannah.gnu.org:
+adduser syncaliases
+# file: /home/syncaliases/00_aliases/aliases
+# file: /home/syncaliases/00_aliases/README
+# file: /home/syncaliases/.ssh/authorized_keys
+
+
+
+# Add user 'root2' with a different password can be used via the virtual console
+
+# Network:
+# file: /etc/network/interfaces
+# file: /etc/network/firewall.sh
+
+apt-get install munin-node
+echo "allow ^10\.1\.0\.101$" >> /etc/munin/munin-node.conf
+invoke-rc.d numunin-node restart
+
+# Optional:
+#cat <<EOF >> /etc/munin/plugin-conf.d/munin-node
+#[cpu*]
+#env.scaleto100 yes
+#EOF

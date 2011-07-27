@@ -1,0 +1,5 @@
+cd /srv/cvs/sources
+for i in *; do nb=$(find $i -maxdepth 2 '!' -path "$i/CVSROOT*" | wc -l); if [ $nb -le 2 ]; then echo $i; fi; done > ~/empty-cvs-sources.txt
+cat ~/empty-cvs-sources.txt| while read i; do echo "UPDATE groups SET use_cvs=0 WHERE unix_group_name='$i';"; done
+mkdir empty
+cat ~/empty-cvs-sources.txt| while read i; do mv $i empty/; done

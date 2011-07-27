@@ -1,0 +1,143 @@
+VServer
+=======
+
+apt-get install udev
+apt-get install openssh-server
+# If using kernel modules - but VServers don't:
+#rsync -avHS root@colonialone.fsf.org:/vservers/$name/lib/modules/2.6.26-2-xen-amd64 /lib/modules/
+
+/etc/inittab:
+  1:2345:respawn:/sbin/getty 38400 hvc0
+
+cat <<EOF > /etc/fstab
+/dev/sda2     /     ext3     errors=remount-ro   0     1
+proc          /proc proc     rw,nodev,nosuid,noexec              0     0
+/dev/sda1     none  swap     sw                    0     0
+EOF
+
+echo "$name" > /etc/hostname
+
+cat <<EOF > /etc/network/interfaces
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interface
+auto eth0
+iface eth0 inet static
+  address 10.1.0.10X
+  netmask 255.255.255.0
+  gateway 10.1.0.1
+  dns-nameservers 199.232.41.12
+EOF
+
+apt-get install linux-image-xen-686
+
+# Attempt to fool update-grub, but doesn't work:
+#sed -i -e 's,/dev/hdv1,/dev/sda2' /etc/mtab
+#echo -e "(hd0)\t/dev/sda)" > /boot/grub/device.map
+
+mkdir /boot/grub/
+apt-get install grub
+
+
+Savannah 2004
+=============
+
+mkdir -m 700 /vservers/$name/root/.ssh/
+cp -a /root/.ssh/authorized_keys /vservers/$name/root/.ssh/
+
+rm /etc/vservers/$name/apps/init/mark # don't run automatically
+vserver $name stop
+
+ifconfig eth0:XXX down
+
+
+colonialone
+===========
+
+name=sftp
+xen-create-image --hostname $name --kernel /boot/vmlinuz-2.6.26-2-xen-amd64 \
+  --initrd /boot/initrd.img-2.6.26-2-xen-amd64 \
+  --dist lenny --mirror http://debian.csail.mit.edu/debian/ \
+  --dhcp  --lvm VG0 --size 60G \
+  --role udev
+
+mkdir /mnt/$name.tmp
+mount /dev/VG0/$name-disk /mnt/$name.tmp
+
+time rsync -v --archive --hard-links --sparse --delete-excluded --numeric-ids \
+  --exclude '/dev/pts/*' --exclude '/proc/*' --exclude '/sys/*' --exclude '/dev/shm/*' \
+  --exclude '/mnt/*/*' --exclude '/media/*/*' --include '/var/cache/apt/archives/partial' --exclude '/var/cache/apt/archives/**' \
+   root@10.1.0.2:/vservers/$name/ /mnt/$name.tmp/
+
+umount /mnt/$name.tmp/
+
+# Move configuration file to /etc/xen/auto/
+
+# Copy a new /etc/xen/mbr/sda-$name
+
+# Use amd64 kernels to boot
+
+xm create auto/$name
+ssh root@10.1.0.10X aptitude reinstall linux-image-2.6.26-2-xen-686 # finish installing kernel
+ssh root@10.1.0.10X update-grub
+
+# Switch to pygrub
+dd if=/dev/zero of=/etc/xen/mbr/$name-sda bs=1k count=1024
+/etc/xen/auto/$name :
+bootloader='/usr/lib/xen-3.2-1/bin/pygrub'
+# Disk containing /boot first, + fake disk
+disk        = [
+                  'phy:/dev/VG0/$name-disk,sda2,w',
+                  'phy:/dev/VG0/$name-swap,sda1,w',
+		  'file:/etc/xen/mbr/$name-sda,sda,w',
+              ]
+
+
+xm shutdown $name
+xm create auto/$name
+
+
+Kernels
+=======
+
+Currently using AMD64 kernels to run 32bit systems/binaries.
+
+If you generate an initrd for a 32bit kernel on a AMD64 system, the
+initrd with use 64bit binaries and hence won't work.
+
+Steven_R uses pygrub:
+=====
+name = "www2"
+memory = "1024"
+
+disk = [ 'phy:vgdom0/www,xvda,w' ]
+vif = [ 'bridge=xenbr0', 'bridge=xenbr1' ]
+bootloader="/usr/bin/pygrub"
+vcpus=1
+on_reboot = 'restart'
+on_crash = 'restart'
+=====
+
+Apparently Xen 3.2 has known issues with vcpus -
+http://wiki.xensource.com/xenwiki/VcpusWithXen?highlight=%28vcpus%29 -
+also it looks like the default is for each virtual machine to only use
+a portion of a single CPU core; colonialone has 4 cores I think, so if
+you have one domU that needs more processing power, you can't do it
+without using vcpus.
+---
+Part of the probleminicity of vcpus was "operator error"; we had total
+# of cpus cores specified too high at that point; we have some domUs
+running with smaller #s of vcpus for a few weeks now and everything
+seems fine.
+
+
+If using '(dom0-cpus 1)' each domU should have a line like
+  cpus = "1-3" # Only the dom0 should use cpu 0 
+
+Using '(dom0-cpus 1)' cause domU shutdown to hang. Set this value to 0
+for a quick fix.

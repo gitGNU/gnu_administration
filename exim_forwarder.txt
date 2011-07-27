@@ -1,0 +1,17 @@
+# Principle: define your hostname, and set your mailname as a different host.
+# E.g.: hostname=cvs; mailname=savannah.gnu.org
+# Then set exim4 to "smarthost + no local mail" and set your smarthost
+# to a machine that accepts your mailname.
+
+# echo TestBody | mail -s TestTitle root
+# <- sender/from: `id -nu`@[dc_readhost]
+# -> to: root -> root@`cat /etc/mailname`
+# (I think)
+
+dpkg-reconfigure exim4-config
+# ToDo: describe what to enter or even better automate that part
+config=satellite (smarthost, no local mail)
+smarthost=10.0.0.101 # thus notifications get merged with the main system's
+
+edit /etc/default/exim4:
+QUEUERUNNER='queueonly'

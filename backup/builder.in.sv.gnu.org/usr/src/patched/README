@@ -1,0 +1,14 @@
+CVS is located in ccvs/.
+
+Obtained through:
+cvs -d:pserver:anonymous@cvs.sv.gnu.org:/sources/cvs co -r cvs1-12-13 ccvs
+
+It is patched using quilt (https://savannah.nongnu.org/p/quilt) and
+built through 'makeinstaller' from Autopackage
+(http://autopackage.org/).
+
+The Debian Etch version is here for reference and is not used at
+Savannah.
+
+extract-package.sh produces a package.tar from the .package file,
+suitable for review.

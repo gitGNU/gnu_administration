@@ -1,0 +1,6 @@
+PATH=/usr/bin:/bin:/usr/local/bin
+*/30 * * * *	root	sv_groups --cron --only-download --only-arch
+
+# Create homedirs and authorized_keys files.
+#*/5 * * * *     root    sv_homedirs && sv_authorized_keys
+*/5 * * * *     root    sv_authorized_keys --single-dir=/etc/ssh/authorized_keys/

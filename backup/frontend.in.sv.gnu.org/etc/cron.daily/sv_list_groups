@@ -1,0 +1,2 @@
+#!/bin/bash
+mysql savane -h 10.1.0.101 -B -e 'SELECT group_type.type_id, group_type.name, unix_group_name, group_name FROM groups, group_type WHERE groups.type = group_type.type_id AND groups.status="A" ORDER BY type;' > /var/www/overlay/cooperation/groups.tsv

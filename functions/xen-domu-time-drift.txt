@@ -1,0 +1,22 @@
+# In some versions of Xen, the VMs' time desync.
+# Here's a fix recommended by FSF sysadmin Bernie Innocenti
+
+aptitude install ntpdate
+cat >/etc/cron.d/ntpdate <<__EOF__
+# Make sure that our clock stays more or less within sync
+# The clock-sync script automatically adjusts if it is run on a Xen domU
+
+0 * * * * root /usr/local/bin/clock-sync.sh
+__EOF__
+cat >/usr/local/bin/clock-sync.sh <<__EOF__
+#!/bin/sh
+
+if [ -d /proc/sys/xen ]; then
+        echo 1 > /proc/sys/xen/independent_wallclock;
+        /usr/sbin/ntpdate pool.ntp.org >> /dev/null 2>&1
+else
+        /usr/sbin/ntpdate pool.ntp.org >> /dev/null 2>&1
+        /sbin/hwclock -w
+fi
+__EOF__
+chmod 755 /usr/local/bin/clock-sync.sh

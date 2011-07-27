@@ -1,0 +1,652 @@
+Index: NEWS
+===================================================================
+RCS file: /sources/cvs/ccvs/NEWS,v
+retrieving revision 1.341
+diff -u -r1.341 NEWS
+--- NEWS	3 Oct 2005 15:56:13 -0000	1.341
++++ NEWS	12 May 2007 15:50:14 -0000
+@@ -49,6 +49,9 @@
+ 
+ * Misc efficiency and portability improvements.
+ 
++* A new command line option, --allow-root-regexp, was added which allows
++acceptable repositories to be specified using a list of regular expressions.
++
+ BUG FIXES
+ 
+ * Thanks to Serguei E. Leontiev <lse@CryptoPro.ru>, CVS with Kerberos 5 GSSAPI
+Index: doc/cvs.texinfo
+===================================================================
+RCS file: /sources/cvs/ccvs/doc/cvs.texinfo,v
+retrieving revision 1.666
+diff -u -r1.666 cvs.texinfo
+--- doc/cvs.texinfo	22 Sep 2005 23:27:50 -0000	1.666
++++ doc/cvs.texinfo	12 May 2007 15:50:14 -0000
+@@ -2501,15 +2501,19 @@
+ The @samp{--allow-root} option specifies the allowable
+ @sc{cvsroot} directory.  Clients which attempt to use a
+ different @sc{cvsroot} directory will not be allowed to
+-connect.  If there is more than one @sc{cvsroot}
+-directory which you want to allow, repeat the option.
++connect.  To allow a whole class of @sc{cvsroot}, specify
++a regular expression to match allowed directories with the
++@samp{--allow-root-regexp} option.  These options may be
++used in conjunction and both options may be repeated to
++allow access to multiple @sc{cvsroot} directories and
++classes of directories.
+ (Unfortunately, many versions of @code{inetd} have very small
+ limits on the number of arguments and/or the total length
+ of the command.  The usual solution to this problem is
+ to have @code{inetd} run a shell script which then invokes
+ @sc{cvs} with the necessary arguments.)
+ 
+-        If your @code{inetd} wants a symbolic service
++If your @code{inetd} wants a symbolic service
+ name instead of a raw port number, then put this in
+ @file{/etc/services}:
+ 
+@@ -11646,10 +11650,15 @@
+ 
+ @table @code
+ @item --allow-root=@var{rootdir}
+-Specify legal @sc{cvsroot} directory (server only) (not
+-in @sc{cvs} 1.9 and older).  See @ref{Password
++Specify acceptable @sc{cvsroot} directory (server only).
++Appeared in @sc{cvs} 1.10.  See @ref{Password
+ authentication server}.
+ 
++@item --allow-root-regexp=@var{rootdir}
++Specify a regular expression which matches acceptable
++@sc{cvsroot} directories (server only).  Appeared in @sc{cvs}
++1.12.14.  See @ref{Password authentication server}.
++
+ @item -a
+ Authenticate all communication (client only) (not in @sc{cvs}
+ 1.9 and older).  See @ref{Global options}.
+@@ -15172,6 +15181,7 @@
+ specific reason for denying authorization.  Check that
+ the username and password specified are correct and
+ that the @code{CVSROOT} specified is allowed by @samp{--allow-root}
++or @samp{--allow-root-regexp}
+ in @file{inetd.conf}.  See @ref{Password authenticated}.
+ 
+ @item cvs @var{command}: conflict: removed @var{file} was modified by second party
+Index: doc/cvsclient.texi
+===================================================================
+RCS file: /sources/cvs/ccvs/doc/cvsclient.texi,v
+retrieving revision 1.142
+diff -u -r1.142 cvsclient.texi
+--- doc/cvsclient.texi	20 Jul 2005 10:38:15 -0000	1.142
++++ doc/cvsclient.texi	12 May 2007 15:50:14 -0000
+@@ -545,7 +545,7 @@
+ The @code{Root} request must be sent only once, and it must be sent
+ before any requests other than @code{Valid-responses},
+ @code{valid-requests}, @code{UseUnchanged}, @code{Set},
+-@code{Global_option}, @code{init}, @code{noop}, or @code{version}.
++@code{Global_option}, @code{noop}, or @code{version}.
+ 
+ @item Valid-responses @var{request-list} \n
+ Response expected: no.
+@@ -876,7 +876,7 @@
+ Commands which do not need to inform the server about a working
+ directory, and thus should not be sending either @code{Modified} or
+ @code{Is-modified}: @code{rdiff}, @code{rtag}, @code{history},
+-@code{init}, and @code{release}.
++and @code{release}.
+ 
+ Commands for which further investigation is warranted are:
+ @code{remove}, @code{add}, and @code{export}.  Pending such
+@@ -1221,12 +1221,6 @@
+ commands are module names, as described for @code{co}.  @code{ls} is a
+ synonym for @code{rlist}, for compatibility with CVSNT.
+ 
+-@item init @var{root-name} \n
+-Response expected: yes.  If it doesn't already exist, create a @sc{cvs}
+-repository @var{root-name}.  Note that @var{root-name} is a local
+-directory and @emph{not} a fully qualified @code{CVSROOT} variable.
+-The @code{Root} request need not have been previously sent.
+-
+ @item update \n
+ Response expected: yes.  Actually do a @code{cvs update} command.  This
+ uses any previous @code{Argument}, @code{Directory}, @code{Entry},
+Index: src/main.c
+===================================================================
+RCS file: /sources/cvs/ccvs/src/main.c,v
+retrieving revision 1.262
+diff -u -r1.262 main.c
+--- src/main.c	29 Sep 2005 22:11:47 -0000	1.262
++++ src/main.c	12 May 2007 15:50:14 -0000
+@@ -521,6 +521,7 @@
+ 	{"help-options", 0, NULL, 4},
+ #ifdef SERVER_SUPPORT
+ 	{"allow-root", required_argument, NULL, 3},
++	{"allow-root-regexp", required_argument, NULL, 14},
+ #endif /* SERVER_SUPPORT */
+         {0, 0, 0, 0}
+     };
+@@ -645,6 +646,10 @@
+ 		/* --allow-root */
+ 		root_allow_add (optarg, gConfigPath);
+ 		break;
++	    case 14:
++                /* --allow-root-regexp */
++                root_allow_regexp_add (optarg, gConfigPath);
++                break;
+ #endif /* SERVER_SUPPORT */
+ 	    case 'Q':
+ 		really_quiet = 1;
+Index: src/root.c
+===================================================================
+RCS file: /sources/cvs/ccvs/src/root.c,v
+retrieving revision 1.119
+diff -u -r1.119 root.c
+--- src/root.c	4 Sep 2005 05:17:53 -0000	1.119
++++ src/root.c	12 May 2007 15:50:14 -0000
+@@ -265,6 +265,7 @@
+    directories.  Then we can check against them when a remote user
+    hands us a CVSROOT directory.  */
+ static List *root_allow;
++static List *root_allow_regexp;
+ 
+ static void
+ delconfig (Node *n)
+@@ -291,12 +292,45 @@
+ root_allow_free (void)
+ {
+     dellist (&root_allow);
++    dellist (&root_allow_regexp);
++}
++
++bool
++root_allow_used (void)
++{
++    return root_allow || root_allow_regexp;
++}
++
++/* walklist() callback for determining if 'root_to_check' matches
++   n->key (a regexp). If yes, 'root_to_check' will be added as if
++   directly specified through --allow-root.
++ */
++static int
++root_allow_compare_regexp (Node *n, void *root_to_check)
++{
++  int status;
++  regex_t re;
++
++  if (regcomp(&re, n->key,
++	      REG_EXTENDED|REG_NOSUB) != 0)
++  {
++      return 0;      /* report error? */
++  }
++  status = regexec(&re, root_to_check, (size_t) 0, NULL, 0);
++  regfree(&re);
++  if (status == 0)
++  {
++      /* n->data contains gConfigPath */
++      root_allow_add (root_to_check, n->data);
++      return 1;
++  }
++  return 0;
+ }
+ 
+ bool
+ root_allow_ok (const char *arg)
+ {
+-    if (!root_allow)
++    if (!root_allow_used())
+     {
+ 	/* Probably someone upgraded from CVS before 1.9.10 to 1.9.10
+ 	   or later without reading the documentation about
+@@ -308,12 +342,18 @@
+ 	   back "error" rather than waiting for the next request which
+ 	   expects responses.  */
+ 	printf ("\
+-error 0 Server configuration missing --allow-root in inetd.conf\n");
++error 0 Server configuration missing --allow-root or --allow-root-regexp in inetd.conf\n");
+ 	exit (EXIT_FAILURE);
+     }
+ 
++    /* Look for 'arg' in the list of full-path allowed roots */
+     if (findnode (root_allow, arg))
+ 	return true;
++    
++    /* Match 'arg' against the list of allowed roots regexps */
++    if (walklist (root_allow_regexp, root_allow_compare_regexp, (void*)arg))
++      return true;
++
+     return false;
+ }
+ 
+Index: src/root.h
+===================================================================
+RCS file: /sources/cvs/ccvs/src/root.h,v
+retrieving revision 1.21
+diff -u -r1.21 root.h
+--- src/root.h	4 Sep 2005 06:00:43 -0000	1.21
++++ src/root.h	12 May 2007 15:50:14 -0000
+@@ -62,6 +62,7 @@
+ 	__attribute__ ((__malloc__));
+ void Create_Root (const char *dir, const char *rootdir);
+ void root_allow_add (const char *, const char *configPath);
++void root_allow_regexp_add (const char *, const char *configPath);
+ void root_allow_free (void);
+ bool root_allow_ok (const char *);
+ struct config *get_root_allow_config (const char *arg, const char *configPath);
+Index: src/sanity.sh
+===================================================================
+RCS file: /sources/cvs/ccvs/src/sanity.sh,v
+retrieving revision 1.1091
+diff -u -r1.1091 sanity.sh
+--- src/sanity.sh	23 Sep 2005 03:19:23 -0000	1.1091
++++ src/sanity.sh	12 May 2007 15:50:14 -0000
+@@ -1298,6 +1298,12 @@
+   warnings=`expr $warnings + 1`
+ }
+ 
++# Convenience function for skipping tests run only in local mode.
++localonly ()
++{
++  skip_always $1 "only tested in local mode"
++}
++
+ fail ()
+ {
+   echo "FAIL: $1" | tee -a ${LOGFILE}
+@@ -2776,10 +2782,15 @@
+ cp -Rp $CVSROOT_DIRNAME/CVSROOT $TESTDIR/CVSROOT.save
+ 
+ 
++
+ ###
+ ### The tests
+ ###
+-dotest init-2 "$testcvs init"
++if $remote; then
++	localonly init-2
++else
++	dotest init-2 "$testcvs init"
++fi
+ 
+ 
+ 
+@@ -21951,14 +21962,6 @@
+ "${SPROG} \[checkout aborted\]: received broken pipe signal"
+ 	    cd ..
+ 	    rm -r 1
+-
+-	    mkdir 1; cd 1
+-	    dotest_fail crerepos-6b "${testcvs} -d crerepos init" \
+-"${SPROG} init: CVSROOT must be an absolute pathname (not .crerepos.)
+-${SPROG} init: when using local access method\.
+-${SPROG} \[init aborted\]: Bad CVSROOT: .crerepos.\."
+-	    cd ..
+-	    rm -r 1
+ 	  fi # end of tests to be skipped for remote
+ 
+ 	  # CVS should have created a history file.  If the administrator 
+@@ -28756,8 +28759,8 @@
+ 	  testcvs2="$testcvs -d '$CVSROOT2'"
+ 
+ 	  dotest multiroot-setup-1 "mkdir $CVSROOT1_DIRNAME $CVSROOT2_DIRNAME"
+-	  dotest multiroot-setup-2 "$testcvs1 init"
+-	  dotest multiroot-setup-3 "$testcvs2 init"
++	  dotest multiroot-setup-2 "$testcvs -d$CVSROOT1_DIRNAME init"
++	  dotest multiroot-setup-3 "$testcvs -d$CVSROOT2_DIRNAME init"
+ 
+ 	  #
+ 	  # create some directories in ${CVSROOT1_DIRNAME}
+@@ -29860,8 +29863,8 @@
+ 	  CVSROOT1=`newroot $CVSROOT1_DIRNAME`
+ 	  CVSROOT2=`newroot $CVSROOT2_DIRNAME`
+ 
+-	  dotest multiroot2-1 "${testcvs} -d ${CVSROOT1} init" ""
+-	  dotest multiroot2-2 "${testcvs} -d ${CVSROOT2} init" ""
++	  dotest multiroot2-1 "$testcvs -d$CVSROOT1_DIRNAME init"
++	  dotest multiroot2-2 "$testcvs -d$CVSROOT2_DIRNAME init"
+ 
+ 	  mkdir imp-dir; cd imp-dir
+ 	  echo file1 >file1
+@@ -30016,12 +30019,12 @@
+ 	  CVSROOT2=`newroot ${TESTDIR}/root2`
+ 
+ 	  mkdir 1; cd 1
+-	  dotest multiroot3-1 "${testcvs} -d ${CVSROOT1} init" ""
++	  dotest multiroot3-1 "$testcvs -d$TESTDIR/root1 init"
+ 	  dotest multiroot3-2 "${testcvs} -d ${CVSROOT1} -q co -l ." ""
+ 	  mkdir dir1
+ 	  dotest multiroot3-3 "${testcvs} add dir1" \
+ "Directory ${TESTDIR}/root1/dir1 added to the repository"
+-	  dotest multiroot3-4 "${testcvs} -d ${CVSROOT2} init" ""
++	  dotest multiroot3-4 "$testcvs -d$TESTDIR/root2 init"
+ 	  rm -r CVS
+ 	  dotest multiroot3-5 "${testcvs} -d ${CVSROOT2} -q co -l ." ""
+ 	  mkdir dir2
+@@ -30142,7 +30145,7 @@
+ 	  CVSROOT2=`newroot ${TESTDIR}/root2`
+ 
+ 	  mkdir 1; cd 1
+-	  dotest multiroot4-1 "${testcvs} -d ${CVSROOT1} init" ""
++	  dotest multiroot4-1 "$testcvs -d$TESTDIR/root1 init"
+ 	  dotest multiroot4-2 "${testcvs} -d ${CVSROOT1} -q co -l ." ""
+ 	  mkdir dircom
+ 	  dotest multiroot4-3 "${testcvs} add dircom" \
+@@ -30157,7 +30160,7 @@
+ initial revision: 1\.1"
+ 	  cd ../..
+ 	  mkdir 2; cd 2
+-	  dotest multiroot4-6 "${testcvs} -d ${CVSROOT2} init" ""
++	  dotest multiroot4-6 "$testcvs -d$TESTDIR/root2 init"
+ 	  dotest multiroot4-7 "${testcvs} -d ${CVSROOT2} -q co -l ." ""
+ 	  mkdir dircom
+ 	  dotest multiroot4-8 "${testcvs} add dircom" \
+@@ -30244,7 +30247,7 @@
+ 	  CVSROOT1=`newroot ${TESTDIR}/root1`
+ 	  CVSROOT_MOVED=`newroot ${TESTDIR}/root-moved`
+ 
+-	  dotest reposmv-setup-1 "${testcvs} -d ${CVSROOT1} init" ""
++	  dotest reposmv-setup-1 "$testcvs -d$TESTDIR/root1 init"
+ 	  mkdir imp-dir; cd imp-dir
+ 	  echo file1 >file1
+ 	  dotest reposmv-setup-2 \
+@@ -30383,7 +30386,7 @@
+ willfail:   :whocares
+ EOF
+ 	    dotest_fail pserver-3 "$servercvs pserver" \
+-"error 0 Server configuration missing --allow-root in inetd.conf" <<EOF
++"error 0 Server configuration missing --allow-root or --allow-root-regexp in inetd.conf" <<EOF
+ BEGIN AUTH REQUEST
+ $CVSROOT_DIRNAME
+ testme
+@@ -30391,6 +30394,27 @@
+ END AUTH REQUEST
+ EOF
+ 
++            regexp='^'`dirname ${CVSROOT_DIRNAME}`'/[^/]+$'
++	    dotest pserver-3b "${testcvs} --allow-root-regexp=$regexp pserver" \
++"I LOVE YOU" <<EOF
++BEGIN AUTH REQUEST
++${CVSROOT_DIRNAME}
++testme
++Ay::'d
++END AUTH REQUEST
++EOF
++
++            regexp='^'`dirname ${CVSROOT_DIRNAME}`'/[^/]+$'
++	    dotest_fail pserver-3c "${testcvs} --allow-root-regexp=$regexp pserver" \
++"$CPROG pserver: ${CVSROOT_DIRNAME}/subdir: no such repository
++I HATE YOU" <<EOF
++BEGIN AUTH REQUEST
++${CVSROOT_DIRNAME}/subdir
++testme
++Ay::'d
++END AUTH REQUEST
++EOF
++
+ 	    # Confirm that not sending a newline during auth cannot constitute
+ 	    # a denial-of-service attack.  This assumes that PATH_MAX is less
+ 	    # than 65536 bytes.  If PATH_MAX is larger than 65535 bytes, this
+@@ -30452,31 +30476,18 @@
+ noop
+ EOF
+ 
+-	    dotest pserver-5a "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+-"${DOTSTAR} LOVE YOU
+-E Protocol error: init says \"${TESTDIR}/2\" but pserver says \"${CVSROOT_DIRNAME}\"
+-error  " <<EOF
+-BEGIN AUTH REQUEST
+-${CVSROOT_DIRNAME}
+-testme
+-Ay::'d
+-END AUTH REQUEST
+-init ${TESTDIR}/2
+-EOF
+-	    dotest_fail pserver-5b "test -d ${TESTDIR}/2" ''
+-
+-	    dotest pserver-5c "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+-"${DOTSTAR} LOVE YOU
+-E init xxx must be an absolute pathname
++	    dotest pserver-5a "$testcvs --allow-root=$CVSROOT_DIRNAME pserver" \
++"$DOTSTAR LOVE YOU
++E init may not be run remotely
+ error  " <<EOF
+ BEGIN AUTH REQUEST
+-${CVSROOT_DIRNAME}
++$CVSROOT_DIRNAME
+ testme
+ Ay::'d
+ END AUTH REQUEST
+-init xxx
++init $TESTDIR/2
+ EOF
+-	    dotest_fail pserver-5d "test -d xxx" ''
++	    dotest_fail pserver-5b "test -d $TESTDIR/2"
+ 
+ 	    dotest_fail pserver-6 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+ "I HATE YOU" <<EOF
+@@ -30576,18 +30587,6 @@
+ version
+ EOF
+ 
+-	    dotest pserver-15 "$servercvs --allow-root=$CVSROOT_DIRNAME pserver" \
+-"$DOTSTAR LOVE YOU
+-E $CPROG \\[server aborted\\]: .init. requires write access to the repository
+-error  " <<EOF
+-BEGIN AUTH REQUEST
+-$CVSROOT_DIRNAME
+-anonymous
+-Ay::'d
+-END AUTH REQUEST
+-init $CVSROOT_DIRNAME
+-EOF
+-
+ 	    dotest pserver-16 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+ "${DOTSTAR} LOVE YOU
+ M Concurrent Versions System (CVS) .*
+@@ -30601,17 +30600,6 @@
+ version
+ EOF
+ 
+-	    dotest pserver-17 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+-"${DOTSTAR} LOVE YOU
+-ok" <<EOF
+-BEGIN AUTH REQUEST
+-${CVSROOT_DIRNAME}
+-testme
+-Ay::'d
+-END AUTH REQUEST
+-init ${CVSROOT_DIRNAME}
+-EOF
+-
+ 	    dotest pserver-18 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+ "${DOTSTAR} LOVE YOU
+ M Concurrent Versions System (CVS) .*
+@@ -30625,17 +30613,6 @@
+ version
+ EOF
+ 
+-	    dotest pserver-19 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+-"${DOTSTAR} LOVE YOU
+-ok" <<EOF
+-BEGIN AUTH REQUEST
+-${CVSROOT_DIRNAME}
+-${username}
+-Anything
+-END AUTH REQUEST
+-init ${CVSROOT_DIRNAME}
+-EOF
+-
+ 	    # Check that writers can write, everyone else can only read
+ 	    # even if not listed in readers
+ 
+@@ -30656,18 +30633,6 @@
+ version
+ EOF
+ 
+-	    dotest pserver-21 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+-"${DOTSTAR} LOVE YOU
+-E $CPROG \\[server aborted\\]: .init. requires write access to the repository
+-error  " <<EOF
+-BEGIN AUTH REQUEST
+-${CVSROOT_DIRNAME}
+-anonymous
+-Ay::'d
+-END AUTH REQUEST
+-init ${CVSROOT_DIRNAME}
+-EOF
+-
+ 	    dotest pserver-22 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+ "${DOTSTAR} LOVE YOU
+ M Concurrent Versions System (CVS) .*
+@@ -30681,18 +30646,7 @@
+ version
+ EOF
+ 
+-	    dotest pserver-23 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+-"${DOTSTAR} LOVE YOU
+-ok" <<EOF
+-BEGIN AUTH REQUEST
+-${CVSROOT_DIRNAME}
+-testme
+-Ay::'d
+-END AUTH REQUEST
+-init ${CVSROOT_DIRNAME}
+-EOF
+-
+-	    dotest pserver-24 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
++	    dotest pserver-24 "${testcvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+ "${DOTSTAR} LOVE YOU
+ M Concurrent Versions System (CVS) .*
+ ok" <<EOF
+@@ -30705,18 +30659,6 @@
+ version
+ EOF
+ 
+-	    dotest pserver-25 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+-"${DOTSTAR} LOVE YOU
+-E $CPROG \\[server aborted\\]: .init. requires write access to the repository
+-error  " <<EOF
+-BEGIN AUTH REQUEST
+-${CVSROOT_DIRNAME}
+-${username}
+-Anything
+-END AUTH REQUEST
+-init ${CVSROOT_DIRNAME}
+-EOF
+-
+ 	    # Should work the same without readers
+ 
+ 	    rm ${CVSROOT_DIRNAME}/CVSROOT/readers
+@@ -30734,18 +30676,6 @@
+ version
+ EOF
+ 
+-	    dotest pserver-27 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+-"${DOTSTAR} LOVE YOU
+-E $CPROG \\[server aborted\\]: .init. requires write access to the repository
+-error  " <<EOF
+-BEGIN AUTH REQUEST
+-${CVSROOT_DIRNAME}
+-anonymous
+-Ay::'d
+-END AUTH REQUEST
+-init ${CVSROOT_DIRNAME}
+-EOF
+-
+ 	    dotest pserver-28 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+ "${DOTSTAR} LOVE YOU
+ M Concurrent Versions System (CVS) .*
+@@ -30759,18 +30689,7 @@
+ version
+ EOF
+ 
+-	    dotest pserver-29 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+-"${DOTSTAR} LOVE YOU
+-ok" <<EOF
+-BEGIN AUTH REQUEST
+-${CVSROOT_DIRNAME}
+-testme
+-Ay::'d
+-END AUTH REQUEST
+-init ${CVSROOT_DIRNAME}
+-EOF
+-
+-	    dotest pserver-30 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
++	    dotest pserver-30 "${testcvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+ "${DOTSTAR} LOVE YOU
+ M Concurrent Versions System (CVS) .*
+ ok" <<EOF
+@@ -30783,18 +30702,6 @@
+ version
+ EOF
+ 
+-	    dotest pserver-31 "${servercvs} --allow-root=${CVSROOT_DIRNAME} pserver" \
+-"${DOTSTAR} LOVE YOU
+-E $CPROG \\[server aborted\\]: .init. requires write access to the repository
+-error  " <<EOF
+-BEGIN AUTH REQUEST
+-${CVSROOT_DIRNAME}
+-${username}
+-Anything
+-END AUTH REQUEST
+-init ${CVSROOT_DIRNAME}
+-EOF
+-
+ 	    # pserver used to try and print from the NULL pointer 
+ 	    # in this error message in this case
+ 	    dotest_fail pserver-bufinit "${servercvs} pserver" \
+@@ -30832,12 +30739,16 @@
+ 
+ 	    # Could also test for relative pathnames here (so that crerepos-6a
+ 	    # and crerepos-6b can use :fork:).
+-	    dotest server-2 "${servercvs} server" "ok" <<EOF
++	    dotest server-2 "$servercvs server" \
++"E init may not be run remotely
++error  " <<EOF
+ Set OTHER=variable
+ Set MYENV=env-value
+ init ${TESTDIR}/crerepos
+ EOF
+-	    dotest server-3 "test -d ${TESTDIR}/crerepos/CVSROOT" ""
++	    dotest_fail server-3 "test -d $TESTDIR/crerepos/CVSROOT"
++
++	    dotest server-3a "$testcvs -d$TESTDIR/crerepos init"
+ 
+ 	    # Now some tests of gzip-file-contents (used by jCVS).
+ 	    ${AWK} 'BEGIN { \
+@@ -31495,7 +31406,7 @@
+ 	  CVSROOT_DIRNAME=${TESTDIR}/cvs.root
+ 	  CVSROOT=`newroot ${CVSROOT_DIRNAME}`
+ 
+-	  dotest dottedroot-init-1 "${testcvs} init" ""
++	  dotest dottedroot-init-1 "$testcvs -d$CVSROOT_DIRNAME init"
+ 	  mkdir dir1
+ 	  mkdir dir1/dir2
+ 	  echo version1 >dir1/dir2/file1
+@@ -32057,7 +31968,7 @@
+ 
+ 	  # Initialize the primary repository
+ 	  dotest writeproxy-noredirect-init-1 \
+-"$testcvs -d'$PRIMARY_CVSROOT' init"
++"$testcvs -d'$PRIMARY_CVSROOT_DIRNAME' init"
+ 	  mkdir writeproxy-noredirect; cd writeproxy-noredirect
+ 	  mkdir primary; cd primary
+ 	  dotest writeproxy-noredirect-init-2 \
+@@ -32332,7 +32243,8 @@
+ 	  SECONDARY_CVSROOT=":ext;Redirect=yes:$host$SECONDARY_CVSROOT_DIRNAME"
+ 
+ 	  # Initialize the primary repository
+-	  dotest writeproxy-ssh-init-1 "$testcvs -d$PRIMARY_CVSROOT init"
++	  dotest writeproxy-ssh-init-1 \
++"$testcvs -d$PRIMARY_CVSROOT_DIRNAME init"
+ 	  mkdir writeproxy-ssh; cd writeproxy-ssh
+ 	  mkdir primary; cd primary
+ 	  dotest writeproxy-ssh-init-2 "$testcvs -Qd$PRIMARY_CVSROOT co CVSROOT"
+@@ -32432,7 +32344,7 @@
+ 
+ 	  # Initialize the primary repository
+ 	  dotest writeproxy-ssh-noredirect-init-1 \
+-"$testcvs -d$PRIMARY_CVSROOT init"
++"$testcvs -d$PRIMARY_CVSROOT_DIRNAME init"
+ 	  mkdir writeproxy-ssh-noredirect; cd writeproxy-ssh-noredirect
+ 	  mkdir primary; cd primary
+ 	  dotest writeproxy-ssh-noredirect-init-2 \

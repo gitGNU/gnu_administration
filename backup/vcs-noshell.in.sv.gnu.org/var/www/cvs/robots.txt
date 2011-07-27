@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /viewvc/
+
+# ViewVC is going crazy in some situations (old revs?) that search
+# engines trigger much more often than real users

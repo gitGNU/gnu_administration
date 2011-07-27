@@ -1,0 +1,48 @@
+#
+# Configuration file for the Xen instance internal, created
+# by xen-tools 3.9 on Sun Jan 10 06:12:11 2010.
+#
+
+#
+#  Kernel + memory size
+#
+#kernel      = '/boot/vmlinuz-2.6.26-2-xen-amd64'
+#ramdisk     = '/boot/initrd.img-2.6.26-2-xen-amd64'
+# or:
+bootloader='/usr/lib/xen-3.2-1/bin/pygrub'
+
+memory      = '1024'
+cpu_weight  = '1024'
+
+#
+#  Disk device(s).
+#
+root        = '/dev/sda2 ro'
+disk        = [
+                  'phy:/dev/vg_savannah/internal-disk,sda2,w',
+                  'phy:/dev/vg_savannah/internal-swap,sda1,w',
+		  'file:/etc/xen/mbr/internal-sda,sda,w',
+              ]
+
+
+#
+#  Hostname
+#
+name        = 'internal'
+
+#
+#  Networking
+#
+#dhcp        = 'dhcp'
+#vif         = [ 'mac=00:16:3E:A7:65:C2' ]
+vif  = [ 'bridge=br-in' ]
+
+#
+#  Behaviour
+#
+on_poweroff = 'destroy'
+on_reboot   = 'restart'
+on_crash    = 'restart'
+
+
+

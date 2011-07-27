@@ -1,0 +1,24 @@
+# diffmon configuration file for gnudist.gnu.org
+#
+# IMPORTANT: place *.html files in diffmon-web.sed with the right sed
+# expression.
+#
+# Lines beginning with `#' are comments.  Comments cannot appear on lines
+# with other, non-comment text.  Blank lines are ignored.
+#
+# Format of this file is
+#
+#     files : diff switches : mail recipient list
+#
+# The recipient list should be in a format acceptable to sendmail on a To:
+# line.
+#
+# Each file/switches/recipients list must be on a single line.  The
+# parser for this file is not very sophisticated.
+#
+# Backup files ending in "~" are always ignored, so there is no need to
+# qualify glob patterns against them.
+
+/root/ChangeLog : -u : savannah-hackers-private@gnu.org
+/root/.ssh/authorized_keys : -u : savannah-hackers-private@gnu.org
+/home/svadmin/.ssh/authorized_keys : -u : savannah-hackers-private@gnu.org

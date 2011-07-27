@@ -1,0 +1,94 @@
+aptitude install -t etch-backports bzr
+
+mkdir -m 755 /srv/bzr
+mkdir -m 755 /var/lib/bzr
+ln -s /dev/null /var/lib/bzr/.bzr.log
+
+
+# Project - like a download area
+project=administration
+mkdir -m 2775 /srv/bzr/$project
+chgrp $project /srv/bzr/$project
+
+# If import, tidy permissions:
+chown -R root:$project /srv/bzr/$project
+find -type d -print0 | xargs -0 chmod 2775 
+find -type f -print0 | xargs -0 chmod 644
+
+
+cat <<EOF > /etc/xinetd.d/bzr-hpss
+service bzr-hpss
+{
+        disable         = no
+        socket_type     = stream
+        protocol        = tcp
+        wait            = no
+        user            = nobody
+        env             = HOME=/var/lib/bzr
+        bind            = 199.232.41.69
+        port            = 4155
+        server          = /usr/bin/bzr
+        server_args     = serve --inet --directory=/srv/bzr --allow-writes
+}
+EOF
+echo 'bzr-hpss 4155/tcp # Bazaar "high performance smart server"' >> /etc/services
+invoke-rc.d xinetd restart
+
+# Note: apparently the bzr devs still recommend http. hpss doesn't
+# support client-side progress bar when downloading, which makes one
+# wonder what happens. They also spread BS about HTTP being
+# 'remarkably efficient' for this kind of task, which is enough to
+# wonder what kind of issues they have with a real bzr-specific
+# server. Ah well..
+
+
+mkdir /var/www/bzr
+# loggerhead
+cd /usr/src/
+wget http://launchpad.net/loggerhead/1.6/1.6.1/+download/loggerhead-1.6.1.tar.gz
+mkdir /var/log/apache2/loggerhead/
+chown www-data: /var/log/apache2/loggerhead/
+aptitude install python-paste python-pastedeploy python-simpletal python-configobj
+su www-data - -c "/usr/bin/serve-branches --host=127.0.0.1 /srv/bzr --prefix=/lh > /var/log/apache2/loggerhead/debug.log 2> /var/log/apache2/loggerhead/access.log"&
+
+# Hopefully this will be fixed soon enough:
+# https://answers.launchpad.net/loggerhead/+question/45503
+
+# file: /etc/apache2/sites-available/bzr
+a2enmod proxy_http
+# Essentially: proxy to loggerhead on localhost:8080
+#  <Location "/lh/">
+#    ProxyPass http://127.0.0.1:8080/
+#    ProxyPassReverse http://127.0.0.1:8080/
+#  </Location>
+
+# Other options:
+# http://bazaar-vcs.org/WebInterface
+# - bazaar-webserve: http://goffredo-baroncelli.homelinux.net/bazaar (404 as of 2008-07)
+# - bzrweb: http://vmlinux.org/jocke/bzr/index.py/log/bzrweb/head
+
+
+# Commit mail notification
+# Server-side hooks not ready/mature yet
+# For emergencies, setup a cron-based per-project checker, using one
+# of the project admins as UID
+
+cd /usr/src
+bzr branch lp:bzr-hookless-email
+echo >> /etc/cron.d/bzr_commit_mail_notification
+0 */2 * * *    rsavoye umask 0002 && /usr/src/bzr-hookless-email/bzr_hookless_email.py -f -e gnash-commit@gnu.org /srv/bzr/gnash/trunk
+EOF
+
+# This thing is quite slow, it takes between 4 and 10 seconds to check
+# a single repository that doesn't have new changes. It works for a
+# single project at a time so we can't start it as a daemon for all
+# projects. It requires write access to BRANCH/.bzr/branch/branch.conf
+# so it needs to be ran by a project member.
+
+# It also need to talk to # an SMTP server (can't it use sendmail??)
+# so:
+
+BRANCH=/srv/sftp/PROJECT/BRANCH
+echo smtp_server=10.0.0.101 >> $BRANCH/.bzr/branch/branch.conf
+chmod 664 $BRANCH/.bzr/branch/branch.conf
+chgrp PROJECT $BRANCH/.bzr/branch/branch.conf

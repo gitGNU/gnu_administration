@@ -1,0 +1,31 @@
+<VirtualHost *:80>
+  ServerName audio-video.gnu.org
+  ServerAdmin savannah-hackers@gnu.org
+  
+  DocumentRoot /srv/audio-video
+  <Directory />
+    Options FollowSymLinks
+    AllowOverride None
+  </Directory>
+  <Directory /var/www>
+    Options None
+    AllowOverride None
+  </Directory>
+  
+  <Directory /srv/audio-video>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+  </Directory>
+
+  Alias /webalizer /var/www/audio-video/webalizer
+  Alias /robots.txt /var/www/audio-video/robots.txt
+  ScriptAlias /awstats.pl /var/www/audio-video/awstats.pl
+
+  ErrorLog /var/log/apache2/audio-video/error.log
+  # Possible values include: debug, info, notice, warn, error, crit,
+  # alert, emerg.
+  LogLevel warn
+  
+  CustomLog /var/log/apache2/audio-video/access.log combined
+  ServerSignature On
+</VirtualHost>

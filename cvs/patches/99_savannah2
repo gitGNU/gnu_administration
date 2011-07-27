@@ -1,0 +1,20 @@
+diff -ruN cvs-1.12.9-old/src/server.c cvs-1.12.9/src/server.c
+--- cvs-1.12.9-old/src/server.c	2006-06-10 09:25:17.062718000 +0000
++++ cvs-1.12.9/src/server.c	2006-06-10 09:27:01.823700031 +0000
+@@ -5901,6 +5901,16 @@
+     int rc;
+     char *host_user = NULL;
+ 
++    /* Never use CVSROOT/passwd for authentication. pserver running as
++       root + user local access + hooks would allow a user to become
++       somebody else. */
++    if ((strcmp(username, "anonymous") == 0)
++	|| (strcmp(username, "anoncvs") == 0)) {
++      return xstrdup("nobody");
++    } else {
++      return NULL;
++    }
++
+     /* First we see if this user has a password in the CVS-specific
+        password file.  If so, that's enough to authenticate with.  If
+        not, we'll check /etc/passwd or maybe whatever is configured via PAM. */

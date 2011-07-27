@@ -1,0 +1,26 @@
+<VirtualHost *:80>
+  ServerName cvs.sv.gnu.org
+  ServerAlias cvs.sv.nongnu.org
+  ServerAlias cvs.savannah.nongnu.org
+  ServerAlias cvs.sv.gnu.org
+  Redirect permanent / http://cvs.savannah.gnu.org/
+</VirtualHost>
+<VirtualHost *:80>
+  ServerName web.cvs.sv.gnu.org
+  ServerAlias web.cvs.sv.nongnu.org
+  ServerAlias web.cvs.savannah.nongnu.org
+  ServerAlias web.cvs.sv.gnu.org/
+  Redirect permanent / http://web.cvs.savannah.gnu.org/
+</VirtualHost>
+
+<VirtualHost *:80>
+  Include sites-available/cvs.inc
+</VirtualHost>
+
+#<VirtualHost 199.232.41.69:443>
+#  SSLEngine on
+#  SSLCertificateFile    /etc/apache2/ssl.crt/cvs.*gnu.org.crt
+#  SSLCertificateKeyFile /etc/apache2/ssl.key/cvs.*gnu.org.key
+#
+#  Include sites-available/cvs.inc
+#</VirtualHost>

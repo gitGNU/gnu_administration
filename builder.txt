@@ -1,0 +1,48 @@
+# Share generated .deb's
+
+# Classic deboostrap:
+# vserver builder build -m debootstrap -- -d etch -m http://sv.gnu.org:9999/debian
+# ... add security source, disabled recommends, etc. ...
+aptitude install apt-src vsftpd
+mkdir -m 755 -p /usr/src/patched/debs
+
+cat >> /etc/vsftpd.conf <<'EOF'
+
+# Savannah-specific:
+listen_port=10021
+anon_root=/usr/src/patched/debs
+EOF
+
+invoke-rc.d vsftpd restart
+
+cat <<'EOF' >> ~/.bash_profile
+export DEBEMAIL="beuc@beuc.net" 
+export DEBFULLNAME="Sylvain Beucler"
+export EDITOR="emacs"
+EOF
+
+# Etch/Backports.org pbuilder
+# host: echo "secure_mount" >> /etc/vservers/builder/ccapabilities
+aptitude install --assume-yes pbuilder cowdancer cdebootstrap
+aptitude install --assume-yes dpkg-dev devscripts fakeroot sudo
+sed -i -e "s,MIRRORSITE=.*,MIRRORSITE=http://10.0.0.101/mirrors/debian/," \
+       -e "s,PBUILDERSATISFYDEPENDSCMD=.*,PBUILDERSATISFYDEPENDSCMD="/usr/lib/pbuilder/pbuilder-satisfydepends-experimental," \
+    /etc/pbuilderrc
+cowbuilder --create --distribution=etch --othermirror "deb http://10.0.0.101/mirrors/debian-backports.org/ etch-backports main"
+chmod a+w /var/cache/pbuilder/base.cow/dev/null # ???
+
+cowbuilder --login --save-after-login
+wget -O - http://backports.org/debian/archive.key | apt-key add -
+aptitude update
+exit
+
+# Example
+cd /usr/src/xcache/
+apt-get source xcache
+cd xcache-1.2.2/
+yes | dch -D etch-backports \
+  --newversion $(dpkg-parsechangelog | sed -ne 's,^Version: ,,p')~bpo40+1 \
+  --force-bad-version -- \
+  "Rebuild for Debian Backports <http://www.backports.org/>"
+# Add yourself to Uploaders: in debian/control
+pdebuild --pbuilder cowbuilder --buildresult /usr/src/patched/debs/all/

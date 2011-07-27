@@ -1,0 +1,58 @@
+--- cvs-1.12.9/src/root.c.orig	Fri Jan 16 16:24:58 2004
++++ cvs-1.12.9/src/root.c	Fri Jan 16 16:59:55 2004
+@@ -242,6 +242,8 @@
+     char *arg;
+ {
+     int i;
++    int arg_len;
++    char *c;
+ 
+     if (root_allow_count == 0)
+     {
+@@ -259,9 +261,46 @@
+ 	error_exit ();
+     }
+ 
++    /* 2004-01-16 zerodeux@xxxxxxx
++       To prevent funny tricks with UTF-8 that could invalidate the
++       very basic next test against possible malicious paths, we
++       are quite restrictive on the input charset. */
++    for (c = arg; *c != '\0'; c++)
++        if (*c < 0)
++        {
++	    printf ("\
++error 0 Non-ASCII characters not allowed in cvsroot path\n");
++	    exit (EXIT_FAILURE);
++        }
++
++    /* 2004-01-16 zerodeux@xxxxxxx
++       Since next test only checks a path substring, we need to be
++       careful with '..' pseudo paths. Actually we just reject any
++       substring matching '..'; we'll got some false positives, but
++       on obviously strange looking paths (too many dots!). */
++    if (strstr(arg, "..") != NULL)
++    {
++	printf ("\
++error 0 Unsafe path elements in cvsroot\n");
++	exit (EXIT_FAILURE);
++    }
++
++    /* 2004-01-16 zerodeux@xxxxxxx
++       Modified the original test to check if the cvsroot 'begins
++       with' one of the allowed cvsroot. It makes up a very simple
++       pattern matching system, together with the previous security
++       tests. */
++    arg_len = strlen(arg);
+     for (i = 0; i < root_allow_count; ++i)
+-	if (strcmp (root_allow_vector[i], arg) == 0)
++    {
++        char *allowed;
++        int allowed_len;
++
++        allowed = root_allow_vector[i]; 
++        allowed_len = strlen(allowed);
++	if (arg_len >= allowed_len && strncmp (arg, allowed, allowed_len) == 0)
+ 	    return 1;
++    }
+     return 0;
+ }

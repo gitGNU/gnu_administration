@@ -1,0 +1,133 @@
+# These are the files necessary to rebuild the system.  They come as a
+# complement to the .txt instructions files from the 'administration'
+# repository.  Ideally we should automatically generate this file
+# using the '#file:' annotations in those files.
+
+# Do not backup generatable or sed-able files.  Document how to
+# produce them instead.
+
+# We should make these files public so that people could easily
+# reproduce the Savannah configuration.  Backup confidential files
+# (such as 'authorized_files') using 'dl-confidential.sh'.
+
+root@colonialone.fsf.org:/ -> colonialone.fsf.org/
+  /root/.profile
+  /root/remote_backup.sh
+
+  # blah
+  /home/syncaliases/00_aliases/aliases
+  /home/syncaliases/00_aliases/README
+
+  /etc/aliases
+  /etc/cron.daily/backup-bind
+  /etc/diffmon/diffmon.cf
+ 
+  /etc/xen/xend-config.sxp
+  /etc/xen/auto/***
+  /etc/xen/disabled/***
+ 
+  /etc/network/interfaces
+  /etc/network/firewall.sh
+
+root@savannah.gnu.org:/ -> frontend.in.sv.gnu.org/
+  /etc/cron.daily/sv_list_groups
+  /etc/cron.d/sv_export
+
+  /etc/savane/.savane.conf.php
+  /etc/savane/savane.conf.pl
+
+  --exclude /etc/apache2/sites-available/default
+  --exclude /etc/apache2/sites-available/default-ssl
+  /etc/apache2/sites-available/***
+  /etc/apache2/conf.d/detect_bot.conf
+
+root@cvs.sv.gnu.org:/ -> vcs-noshell.in.sv.gnu.org/
+  /etc/init.d/cvs-permissions
+  /etc/init.d/cvs_lockdirs
+  /etc/libnss-mysql.cfg
+  /etc/libnss-mysql-root.cfg
+
+  /etc/cron.hourly/bzr_commit_mail_notification
+  /etc/cron.d/rsync_external_cvs_repositories
+  /etc/cron.d/sv
+  /etc/cron.d/cvs2git
+  /etc/cron.d/truncate-gitcvs-db-log
+
+  --exclude /etc/apache2/sites-available/default
+  --exclude /etc/apache2/sites-available/default-ssl
+  /etc/apache2/sites-available/***
+  /etc/apache2/conf.d/detect_bot.conf
+  /etc/apache2/conf.d/rlimit
+  /etc/apache2/conf.d/status
+
+  --exclude /var/www/*/webalizer/*
+  --exclude /var/www/git/cgit/*
+  /var/www/bzr/***
+  /var/www/cvs/***
+  /var/www/git/***
+  /var/www/hg/***
+  /var/www/svn/***
+  /var/www/off-site/README
+  /var/www/off-site/hgweb/***
+  /var/www/off-site/viewvc/viewvc.conf
+  /var/www/off-site/viewvc/templates/include/header.ezt
+
+  /etc/gitweb.conf
+  /etc/cgitrc
+  /etc/mercurial/***
+
+[shell]
+# Mangle passwords (TODO: split them in separate file)
+sed -i -e 's/^password.*/password XXXXX/' \
+  vcs-noshell.in.sv.gnu.org/etc/libnss-mysql.cfg \
+  vcs-noshell.in.sv.gnu.org/etc/libnss-mysql-root.cfg
+# TODO: document hgweb/viewvc/cgit/etc. configurations instead of
+# copying them.
+[/shell]
+
+root@dl.sv.gnu.org:/ -> sftp.in.sv.gnu.org/
+  /etc/cron.d/download-tidyperms
+  /etc/cron.d/download-timestamp
+  /etc/cron.d/sv
+ 
+  /etc/mirmon.conf
+ 
+  --exclude /etc/apache2/sites-available/default
+  --exclude /etc/apache2/sites-available/default-ssl
+  /etc/apache2/sites-available/***
+  /etc/apache2/conf.d/sv_dotsig
+ 
+  --exclude /var/www/*/webalizer/*
+  --exclude /var/www/arch/google*
+  --exclude /var/www/download/mirmon/*
+  /var/www/arch/***
+  /var/www/download/***
+  /var/www/audio-video/***
+ 
+  /srv/download/00_MIRRORS.*
+
+root@internal.in.sv.gnu.org:/ -> internal.in.sv.gnu.org/
+  /usr/sbin/rmlist
+  /usr/sbin/config_list
+  /usr/lib/mailman/bin/change_pw
+ 
+  /etc/mysql/my.cnf
+  /etc/mysql/my-huge.cnf
+  /etc/exim4/update-exim4.conf.conf
+  /etc/munin/munin.conf
+ 
+  /etc/cron.d/sv
+
+root@builder.in.sv.gnu.org:/ -> builder.in.sv.gnu.org/
+  /usr/src/patched/README
+  /usr/src/patched/cvs-patches/***
+  /usr/src/patched/webalizer.changelog
+  /usr/src/patched/debs/README
+
+root@savannah-backup.gnu.org:/ -> savannah-backup.gnu.org/
+  /root/restore.sh
+
+  /etc/cron.daily/check-savannah-backup
+  /etc/cron.d/savannah-backup
+ 
+  /mnt/backup/backup.sh

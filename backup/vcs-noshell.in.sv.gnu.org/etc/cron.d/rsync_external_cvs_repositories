@@ -1,0 +1,34 @@
+PATH=/bin:/usr/bin:/usr/local/bin
+MAILTO=savannah-reports-private@gnu.org
+################################################ RSYNC'S
+#
+# Sync projects not maintained at Savannah
+
+
+# - gawk
+# Contact: bob@proulx.com
+21 * * * *	gawkrsync	rsync_external_cvs_repository.sh rsync://rsync.proulx.com/gawk/* gawk
+
+# - gdbm
+# Contact: gray@gnu.org.ua
+15 * * * *      gdbmrsync       rsync_external_cvs_repository.sh rsync://gnu.org.ua/cvs-software/gdbm/gdbm gdbm
+
+
+# Inactive (history)
+
+# - Automake
+#40 * * * *	amrsync	rsync_external_cvs_repository.sh rsync://sources.redhat.com/automake-cvs/ automake
+
+# - GCC
+# No need to update it until we move it to SVN
+#45 * * * *	gccrsync	rsync_external_cvs_repository.sh rsync://gcc.gnu.org/gcc-cvs/ gcc
+
+# - coreutils
+# Disabled, now that git is the primary repo, and changes
+# are propagated to cvs automatically via a git hook.
+#12 * * * *	coreutilsrsync	rsync_external_cvs_repository.sh rsync://rsync.proulx.com/coreutils/ coreutils
+
+# - libc
+# Switched to Git in 2009
+# At last we will stop getting "Service temporarily unavailable, please try again later" errors
+#30 * * * *      libcrsync	rsync_external_cvs_repository.sh rsync://sources.redhat.com/glibc-cvs libc

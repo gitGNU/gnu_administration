@@ -1,0 +1,51 @@
+# Internal in setup on 10.0.0.101. This IP is used by other vservers in several contexts:
+# - mail forwarder
+# - MySQL database
+# - APT proxy
+
+aptitude --assume-yes install mysql-server-4.1
+cd /etc/mysql
+zcat /usr/share/doc/mysql-server-4.1/examples/my-huge.cnf > my-huge.cnf.orig
+cp my-huge.cnf.orig my-huge.cnf
+ln -s my-huge.cnf my.cnf
+# comment log-bin (useful?)
+# +bind-address = 10.0.0.101
+
+mkdir -m 700 /dumps/
+# file: /etc/logrotate.d/savane
+
+# Approx
+apt-get install approx
+cat <<EOF >> /etc/approx/approx.conf
+debian			http://ftp.us.debian.org/debian
+debian-security		http://security.debian.org
+debian-backports.org	http://backports.debian.org/debian-backports
+debian-volatile		http://volatile.debian.org/debian-volatile
+EOF
+
+# TODO: mail system
+# * Internet site
+# * IP-addresses to listen on for incoming SMTP connections: 10.0.0.101
+# * Relay hosts: 199.232.41.3;199.232.41.4;199.232.41.71;199.232.41.69;199.232.41.75;199.232.41.76;10.0.0.0/24
+
+# Also modify /etc/exim4/exim4.conf.template, below 'rewrite/31_exim4-config_rewriting':
+## Replace sender by INVALID.NOREPLY@gnu.org (to avoid SRS- and SPF-related issues)
+#*@+local_domains "${lookup{${local_part}}lsearch{/etc/email-addresses_SENDER}\
+#                   {$value}fail}" F
+
+
+# Savane
+touch /etc/cron.d/savane
+./savane.sh
+
+# file: /usr/sbin/newlist
+# file: /usr/sbin/config_list
+# file: /usr/lib/mailman/bin/change_pw
+# file: /usr/sbin/rmlist
+
+# Cacti
+# Apache:8080
+# + http://forums.cacti.net/about11376.html
+
+# For MySQL stats:
+GRANT SUPER, PROCESS ON *.* TO 'cacti_probe' IDENTIFIED BY 'XXXXX';

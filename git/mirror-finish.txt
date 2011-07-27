@@ -1,0 +1,81 @@
+This file describes a procedure you need to follow in order to finish
+migrating a project from CVS to GIT.  It is supposed that the CVS to GIT
+mirror for that project was already operational. Throughout these
+instructions the word PROJECT stands for the actual system name of the
+project in question.
+
+* vcs-noshell
+
+All actions are performed in the vcs-noshell virtual server, so, to begin
+with, you need to do:
+
+  vserver vcs-noshell enter
+
+First part of the procedure must be done with the privileges of the
+cvs2git user.  The second part requires root privileges.
+  
+* Part 1: as cvs2git
+
+The commands in this part turn off the mirroring and disable the CVS
+repository.
+
+** Switch to cvs2git user
+
+  su - cvs2git
+
+** Turn off the mirroring of PROJECT
+
+Edit cvs2git's crontab file.  Run
+
+   crontab -e
+
+Find the relevant line and remove it.  The line in question will look like:
+
+   35,50 * * * *      $HOME/bin/mirror-sv-sv PROJECT
+
+** Ensure that there is no crontab job syncing to git
+
+** Disable the CVS repository
+
+This step removes all files from the repository and checks in a
+single README-use-git file, instructing where to find the new repository.
+
+Run the script
+
+   bin/sv-cvs-delete-all PROJECT
+
+** Leave cvs2git privileges
+
+Type ^D or logout
+
+* Part 2: as root
+
+The commands in this part disable write access to the CVS repository and
+configure the corresponding GIT repo, which operated as a mirror so far,
+for read/write access.
+
+** Disable CVS commit access
+
+Run
+
+   /root/Meyering/cvs-no-commit PROJECT
+
+** Adjust permissions in GIT repo
+
+Run
+
+   /root/Meyering/git-adjust-perms PROJECT
+
+** Fix project description
+
+The git-adjust-perms script warns if the description of the PROJECT contains a
+word "mirror" in it. If so, open the file PROJECT.git/description with your
+editor and fix the description.
+
+
+Local variables:
+mode: outline
+paragraph-separate: "[	]*$"
+end:
+
+

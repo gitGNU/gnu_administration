@@ -1,0 +1,68 @@
+# For Doctor
+# Another pserver running as root locally, only for /srv/cvs/web:
+# file: /etc/xinetd.d/pserver-doctor
+cat <<EOF > /etc/xinetd.d/pserver-doctor
+service cvspserver-doctor
+{
+# disabled awaiting properly patched CVS and actual interest in the tool
+        disable         = yes
+        port            = 12401
+        socket_type     = stream
+        protocol        = tcp
+        wait            = no
+        user            = root
+        passenv         = PATH
+        bind            = 199.232.41.69
+        server          = /usr/bin/cvs
+        server_args     = -f --allow-root-regexp=$/web/[^/]+$ pserver
+}
+EOF
+# We need pam_mysql. We can't use the libpam-mysql Debian package
+# because of http://bugs.debian.org/373834 (no MD5 support)
+# In compilation environment:
+aptitude install libmysqlclient15-dev
+cd /usr/src
+wget http://ovh.dl.sourceforge.net/sourceforge/pam-mysql/pam_mysql-0.7RC1.tar.gz
+tar xzf pam_mysql-0.7RC1.tar.gz
+cd pam_mysql-0.7RC1
+./configure --with-openssl # for MD5 support
+make
+
+# top-level:
+rsync -av /subsystems/compilation-environment/usr/src/pam_mysql-0.7RC1 /subsystems/cvs/usr/src/
+mysql -e "grant select on savannah.user to cvspserver@127.0.0.1 identified by 'Lklas35s';"
+
+# cvs:
+aptitude --without-recommends install libmysqlclient15off
+cd /usr/src/pam_mysql-0.7RC1
+make install
+
+# file: /etc/pam.d/cvs
+chmod 600 /etc/pam.d/cvs
+
+cd /var/www/
+aptitude install libtemplate-perl libappconfig-perl perl-modules libtext-diff-perl libemail-valid-perl libmime-perl
+cvs -d :pserver:anonymous:anonymous@cvs-mirror.mozilla.org:/cvsroot co -d doctor-install mozilla/webtools/doctor
+mkdir -p -m 755 doctor/www
+cd doctor/www
+for i in Doctor Doctor.pm doctor.cgi doctor.css doctor.js templates; do ln -sf ../../../out/doctor-common/$i; done
+ln -sf ../../htmlarea/
+# file: doctor.conf
+
+cd /var/www/cvs
+wget http://superb-east.dl.sourceforge.net/sourceforge/itools-htmlarea/HTMLArea-3.0-rc1.zip
+unzip HTMLArea-3.0-rc1.zip 
+rm -f HTMLArea-3.0-rc1.zip
+HTMLArea-3.0-rc1 htmlarea
+find htmlarea/ -type f -exec chmod 644 {} \;
+find htmlarea/ -type d -exec chmod 755 {} \;
+find htmlarea/ -name "*.cgi" -exec chmod 755 {} \;
+
+# About multi-site Doctor:
+#<Beuc> Ok, 1) so numbers cannot have 'gaps'; 2) there can only be one CVS repository; 3) EDITOR_EMAIL is site-wide; 4) I suspect site-wide TEMP_DIR could host conflicting directories; 5) URI_PATTERNs conflict with www (since it contains /software)
+#<Beuc> (plus I'd also like a way to edit UTF8-encoded files :p)
+
+# Activating wysiwyg:
+# Put <?doctor enable_wysiwyg_mode ?> in the text of the file (says edit.tmpl)
+
+a2enmod ssl

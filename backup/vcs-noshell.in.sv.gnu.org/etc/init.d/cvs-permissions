@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Set permissions programmatically - they are currently not backed up
+# since rsync does not support them yet.
+
+if [ "$1" != "start" ]; then
+    exit
+fi
+
+##
+# ACL
+##
+
+echo "Setting up CVS ACLs (group 'www' access to all GNU web repositories)"
+perl -MSavane -e 'print join("\n", GetGroupList("(type=1 or type=3 or type=6) and status=\"A\"", "unix_group_name"))' \
+    | \
+    while read i; do
+    # Allowing group 'www' to edit GNU projects' webpages
+    find /web/$i/$i -type d -print0 | xargs --no-run-if-empty -0 setfacl -m default:group:www:rwx -m group:www:rwx
+    # /web/*/CVSROOT/history is writable by project 'www' members
+    setfacl -m group:www:rw /web/$i/CVSROOT/history
+done
+
+
+##
+# ext2 attributes
+###
+
+echo "Setting immutable flag on CVSROOTs"
+# Set immutable flag on CVSROOT (prevents security issues even with
+# local access)
+# Put /sources and /web on 2 separate lines, else "/usr/bin/find: Argument list too long"
+find /sources/*/CVSROOT -maxdepth 0 -print0 | xargs -0 chattr +i
+find /web/*/CVSROOT     -maxdepth 0 -print0 | xargs -0 chattr +i
+find /srv/git/*.git/hooks   -maxdepth 0 -print0 | xargs -0 chattr +i
+find /srv/git/*/*.git/hooks -maxdepth 0 -print0 | xargs -0 chattr +i
+# the 2 gits are on a separate line, because the 2nd pattern doesn't match anything atm and fails

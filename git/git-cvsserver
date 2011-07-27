@@ -1,0 +1,47 @@
+Here's how to enable cvsserver emulation for git repositories:
+
+Put the following in /etc/xinetd.d/git-cvspserver:
+
+service cvspserver
+{
+	disable         = no
+	socket_type     = stream
+	protocol        = tcp
+	wait            = no
+	user            = nobody
+	passenv         = PATH
+	bind            = 199.232.41.75
+	server          = /usr/bin/git-cvsserver
+	server_args     = --base-path=/srv/git --strict-paths pserver
+}
+
+It requires the perl DBD::SQLite module, so I installed this:
+aptitude install libdbd-sqlite3-perl
+
+Then, for each repository for which you want to enable this,
+run the following script from within the cvs vserver:
+
+[Note: this is done automatically by Savane now; we keep the
+documentation in case manual creation is needed, such as in
+sub-repositories.]
+
+    $ cat git-cvs-enable
+    #!/bin/bash
+    git_proj=$1
+    export GIT_DIR=/srv/git/$git_proj.git
+    test -d $GIT_DIR || exit 1
+
+    git-config gitcvs.pserver.enabled 1
+    git-config gitcvs.ext.enabled 0
+    git-config gitcvs.dbname '%G/gitcvs-db/sqlite'
+    d=$GIT_DIR/gitcvs-db
+    mkdir $d && chown nobody $d
+
+E.g., for gnulib.git, you'd run "git-cvs-enable gnulib".
+
+Then, anyone can check out like this:
+
+  cvs -d :pserver:anonymous@pserver.git.sv.gnu.org:/gnulib.git co -d gnulib HEAD
+
+One little bit of ugliness: we have to create a directory
+in each git repository that is writable by user "nobody".

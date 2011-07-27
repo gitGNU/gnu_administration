@@ -1,0 +1,8 @@
+# Fix umask problem
+# umask 0022 -> 0002 for team work
+apt-get install libpam-umask
+# sed -i -e 's/^UsePAM .*/UsePAM yes/' /etc/ssh/sshd_config
+cat <<'EOF' >> /etc/pam.d/sshd
+# Grant group write-access on new files
+session    optional     pam_umask.so umask=002
+EOF

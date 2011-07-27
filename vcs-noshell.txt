@@ -1,0 +1,39 @@
+sed -i -e 's,/var/log/apache2/\*.log,/var/log/apache2/*.log /var/log/apache2/*/*.log,' /etc/logrotate.d/apache2
+cd /var/log/apache2
+mkdir -m 755 cvs svn git hg bzr www-test.gnu.org
+
+
+# file:scramble: /etc/libnss-mysql.cfg
+# file:scramble: /etc/libnss-mysql-root.cfg
+
+#apt-get install libnss-extrausers
+# TODO: CRON:
+# TODO: doesn't add groups after login??
+#root@vcs-noshell:/etc/ssh# getent passwd > /var/lib/extrausers/passwd
+#root@vcs-noshell:/etc/ssh# getent group > /var/lib/extrausers/group
+#root@vcs-noshell:/etc/ssh# getent shadow > /var/lib/extrausers/shadow
+
+
+cat <<'EOF' > /etc/membersh-conf.pl
+$use_cvs = "1";
+$use_svn = "1";
+our @prepend_args_svn = ('-r', '/srv/svn');
+$use_git = "1";
+
+# Enable read-only rsync access
+$allowed_paths = "(/srv/cvs|/sources|/web)";
+$use_rsync = '1';
+$regexp_rsync = '^rsync --server --sender ';
+$regexp_dir_rsync = "^$allowed_paths";
+
+$use_hg = '1';
+
+$use_bzr = '1';
+EOF
+
+
+# Details for each VCS:
+# -> cvs.txt
+# -> git.txt
+# -> bzr.txt
+# -> hg.txt

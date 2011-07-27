@@ -1,0 +1,277 @@
+# Compilation
+
+## Flavour 1: Debian
+# sources += backports.org
+
+# bootstrap
+cd /usr/src/patched
+aptitude -t sarge-backports install asciidoc
+aptitude install libcurl3-dev xmlto rcs
+apt-src install git-core/sarge-backports
+apt-src build --installdebs git-core
+
+# get the repository
+git clone -n git://git.kernel.org/pub/scm/git/git.git git-latest
+
+# update
+apt-src remove git-core
+apt-src install git-core/sarge-backports
+cd git-latest
+git pull # http://git.or.cz/gitwiki/GitFaq if errors
+ls .git/refs/tags/*
+
+# build
+git reset --hard vX.X.XX
+rm -rf debian
+cp -a ../git-core-*/debian/ .
+chmod -R g-s debian/
+rm -rf debian/diff/* # we use Git, not any of its forks
+emacs debian/rules # remove the test suite - I don't care if that
+  # fails but I do care about debuild failing when it does
+dch -i
+debuild -us -uc
+cd ..
+
+# publish
+mv git*.deb debs/all/
+(cd debs && apt-ftparchive packages all/ | gzip > all/Packages.gz)
+
+
+## Flavor 2: manual
+
+# bootstrap
+cd /usr/src/patched
+aptitude install libcurl3-gnutls-dev rcs asciidoc xmlto
+
+# get the repository
+git clone -n git://git.kernel.org/pub/scm/git/git.git git-latest
+
+# update
+cd git-latest
+git pull # http://git.or.cz/gitwiki/GitFaq if errors
+ls .git/refs/tags/*
+git reset --hard vX.X.XX
+
+# build
+make configure
+./configure
+make
+# make test
+rm -rf ../git-build
+mkdir ../git-build
+make install DESTDIR=/usr/src/git/git-build
+
+# publish
+cd ../git-build
+tar czf ../git.tar.gz .
+# cp /vservers/builder/usr/src/git/git.tar.gz /vservers/cvs/usr/src/
+
+# install
+cat 2delete.txt | (cd / && xargs -r rm)
+tar xzf git.tar.gz -C /
+tar tzf git.tar.gz > 2delete.txt
+
+# gitweb:
+# ???
+# \cp -a /vservers/builder/usr/src/git/git-latest/gitweb/ /vservers/cvs/var/www/git/
+
+# man:
+# cd /usr/src
+# git clone -n git://git.kernel.org/pub/scm/git/git.git git-latest
+# cd git-latest/
+# git pull origin man
+# make quick-install-doc prefix=/usr/local
+
+# clean:
+#rm -rf * .gitignore .mailmap
+#git reset --hard v1.X.X.X
+#\cp -a ../autopackage/ .
+#make -C autopackage/
+
+#============
+
+# Server
+cat <<'EOF' > /etc/xinetd.d/git
+service git
+{
+        disable         = no
+        socket_type     = stream
+        protocol        = tcp
+        wait            = no
+        user            = nobody
+        passenv         = PATH
+        bind            = 199.232.41.69
+        server          = /usr/bin/git-daemon 
+        server_args     = --inetd --export-all --base-path=/srv/git /srv/git
+}
+EOF
+cat <<'EOF' > /etc/xinetd.d/git-cvsserver
+service cvspserver
+{
+        disable         = no
+        socket_type     = stream
+        protocol        = tcp
+        wait            = no
+        user            = nobody
+        passenv         = PATH
+        bind            = 199.232.41.75
+        server          = /usr/bin/git-cvsserver
+        server_args     = --base-path=/srv/git --strict-paths pserver
+}
+EOF
+apt-get install libdbd-sqlite3-perl # for git-cvsserver
+# Included in Lenny
+#echo "git	9418/tcp	# git-daemon" >> /etc/services
+
+# Umask 0022 -> 0002 for team work
+# call: functions/umask.txt
+
+aptitude install gitweb
+cd /var/www/cvs
+mkdir -m 755 git
+cd git
+ln -s /usr/lib/cgi-bin/gitweb.cgi
+ln -s ../../gitweb.css
+ln -s ../../git-logo.png
+ln -s ../../git-favicon.png
+
+# file: /etc/apache2/sites-available/git
+# (SetEnv GITWEB /etc/gitweb.conf)
+# file: /etc/gitweb.conf
+# (set the repository location to /srv/git/sources/)
+
+# Layout: /srv/git/sources/project_name.git
+#         /srv/git/sources/project_name/other_module.git
+
+# Create a repository
+cd /srv/git
+umask 002
+project=XXX
+export GIT_DIR=${project}.git
+# --shared sets g+s on directories
+git init --shared=all
+chgrp -R $project $GIT_DIR
+# needed to make the repo accessible via bare HTTP
+cat << EOF > $GIT_DIR/hooks/post-update
+#!/bin/sh
+exec git update-server-info
+EOF
+chmod 755 $GIT_DIR/hooks/post-update
+# forbid access to hooks
+chown -R root: $GIT_DIR/hooks
+chattr +i $GIT_DIR/hooks
+
+mkdir -m 2755 $project/
+chown root:$project $project/
+
+# Hooks: how about "run-parts --arg $1 --arg $2 hooks/post-update.d/" as a
+# hooks multiplexer?
+
+## E-mail commits:
+# Install hook
+pushd /usr/src/
+git clone git://git2.kernel.org/pub/scm/git/git.git
+chmod 755 git/contrib/hooks/post-receive-email
+popd
+# Per-project setup
+pushd /srv/git
+project=myproject
+chattr -i $GIT_DIR/hooks
+cat <<'EOF' > $GIT_DIR/hooks/post-receive
+#!/bin/bash
+exec run-parts hooks/post-receive.d
+EOF
+chmod 755 $GIT_DIR/hooks/post-receive
+mkdir -m 755 $GIT_DIR/hooks/post-receive.d
+chattr +i $GIT_DIR/hooks
+ln -s /usr/src/git/contrib/hooks/post-receive-email $GIT_DIR/hooks/post-receive.d/
+git config hooks.showrev "t=%s; echo http://git.savannah.gnu.org/cgit/${dir_git}/commit/?id=\$t; echo; echo; git show -C \$t; echo"
+git config hooks.mailinglist $project-commit@xgnu.org
+popd
+
+# Repository maintenance:
+# http://www.kernel.org/pub/software/scm/git/docs/everyday.html
+# recommends "repacking every 4-5MB of loose objects accumulation may
+# be a good rule of thumb."
+# So:
+GIT_DIR=coreutils.git git count-objects
+# If > 5120
+GIT_DIR=coreutils.git git repack
+GIT_DIR=coreutils.git git prune
+# However it seems this is done automatically (on commit) now.
+
+-> git/cgit.txt
+cat <<'EOF' > /etc/cgitrc
+#TODO
+#create agefile=info/web/last-modified
+
+# Enable caching of up to 10000 output entriess
+cache-size=10000
+#cache-size=0
+
+css=/cgit/cgit.css
+logo=/cgit/cgit.png
+favicon=/gitweb/git-favicon.png
+max-repo-count=1000
+max-repodesc-length=40
+
+enable-index-links=1
+enable-log-filecount=1
+enable-log-linecount=1
+
+
+# Specify some default clone prefixes
+clone-prefix=git://git.sv.gnu.org ssh://git.sv.gnu.org/srv/git http://git.sv.gnu.org/r
+
+# Set the title and heading of the repository index page
+root-title=Savannah Git Hosting
+
+# Set a subheading for the repository index page
+root-desc=cgit browser
+
+# Include some more info about foobar.com on the index page
+root-readme=/var/www/git/gitweb/indextext.html
+
+# Allow download of tar.gz, tar.bz and zip-files
+snapshots=tar.gz 
+
+include=/srv/git/cgitrepos
+EOF
+
+cat <<'EOF' >> /etc/cron.d/sv_vcs
+*/15 * * * *    root    /usr/src/infra/git/refresh-project-list.sh && /usr/src/infra/git/sv_cgit.pl
+EOF
+
+
+
+# CIA notification
+# ================
+
+cd /srv/git
+umask 002
+project=XXX
+export GIT_DIR=${project}.git
+
+chattr -i $GIT_DIR/hooks
+cat <<'EOF' > $GIT_DIR/hooks/update
+#!/bin/bash
+exec run-parts --arg "$1" --arg "$2" --arg "$3" -- hooks/update.d
+EOF
+chmod 755 $GIT_DIR/hooks/update
+mkdir -m 755 $GIT_DIR/hooks/update.d
+chattr +i $GIT_DIR/hooks
+
+git config ciabot.xmlrpc true
+git config ciabot.project $project
+git config ciabot.repo $project.git
+# Can't call ciabot directly - need a wrapper for 'update' >(
+# For reference, using the 'commit' hook would only work for a local
+# repository.
+cat <<'EOF' > $GIT_DIR/hooks/update.d/ciabot
+#!/bin/bash
+refname=$1
+oldhead=$2
+newhead=$3
+exec /usr/src/git/contrib/ciabot/ciabot.py ${refname} $(git rev-list ${oldhead}..${newhead} | tac)
+EOF
+chmod 755 $GIT_DIR/hooks/update.d/ciabot

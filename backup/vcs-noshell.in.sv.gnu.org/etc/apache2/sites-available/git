@@ -1,0 +1,58 @@
+<VirtualHost *:80>
+  ServerName git.sv.gnu.org
+  ServerAlias git.sv.nongnu.org
+  ServerAlias git.savannah.nongnu.org
+  Redirect permanent / http://git.savannah.gnu.org/
+</VirtualHost>
+
+<VirtualHost *:80>
+  ServerName git.savannah.gnu.org
+
+  DocumentRoot /var/www/git/
+  ScriptAlias /awstats.pl /var/www/git/awstats.pl
+
+  # Using git-http-backend (a CGI script) to speed-up HTTP access
+  SetEnv GIT_PROJECT_ROOT /srv/git
+  SetEnv GIT_HTTP_EXPORT_ALL
+  # - Basic:
+  #ScriptAlias /r-tmp/ /usr/lib/git-core/git-http-backend/
+  # - Maintain direct access to files:
+  ScriptAliasMatch \
+    "(?x)^/r/(.*/(HEAD | \
+                    info/refs | \
+                    objects/info/[^/]+ | \
+                    git-(upload|receive)-pack))$" \
+    /usr/lib/git-core/git-http-backend/$1
+  #AliasMatch ^/r/(.*/objects/[0-9a-f]{2}/[0-9a-f]{38})$          /srv/git/$1
+  #AliasMatch ^/r/(.*/objects/pack/pack-[0-9a-f]{40}.(pack|idx))$ /srv/git/$1
+
+  Alias /r/ /srv/git/
+  <Directory /srv/git/>
+    Options Indexes FollowSymlinks
+    AllowOverride None
+  </Directory>
+
+  # gitweb
+  SetEnv GITWEB_CONFIG /etc/gitweb.conf
+  #ScriptAlias /gitweb/ /usr/lib/cgi-bin/gitweb.cgi
+  # Put .cgi and icons in /gitweb/
+  <Directory /usr/share/gitweb/>
+    Options ExecCGI FollowSymLinks
+    AddHandler cgi-script cgi
+    DirectoryIndex index.cgi
+  </Directory>
+
+  Alias /cgit/cgit.css /var/www/git/cgit/cgit.css
+  Alias /cgit/cgit.png /var/www/git/cgit/cgit.png
+  ScriptAlias /cgit /var/www/git/cgit/cgit.cgi
+  ## Put .cgi and icons in /cgit/
+  #<Directory /var/www/git/cgit/>
+  #  Options ExecCGI FollowSymLinks
+  #  AddHandler cgi-script cgi
+  #  DirectoryIndex cgit.cgi
+  #</Directory>
+
+  LogLevel warn
+  CustomLog /var/log/apache2/git/access.log combined
+  ErrorLog /var/log/apache2/git/error.log
+</VirtualHost>

@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /
+
+# loggerhead is pretty slow; let's not accept webcrawler requests

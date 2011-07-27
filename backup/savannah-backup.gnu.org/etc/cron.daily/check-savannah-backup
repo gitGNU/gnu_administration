@@ -1,0 +1,6 @@
+#!/bin/bash
+res=$(find /mnt/backup/vcs-noshell/copy/var/log/syslog -mtime +0)
+if [ ! -z $res ]; then
+    echo The backup is older than 1 day!
+    exit 1
+fi

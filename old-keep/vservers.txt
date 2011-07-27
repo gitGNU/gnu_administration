@@ -1,0 +1,120 @@
+VServers Survival
+~~~~~~~~~~~~~~~~~
+
+# Basic Commands
+
+- List availables vservers:
+ls /vservers/
+
+- List running vservers:
+vserver-stat
+
+- Enter "inside" a vserver:
+vserver XXX enter
+
+- Upgrade vservers:
+vapt-get --all -- update
+vapt-get --all -- upgrade
+
+- See all processes, not just the host's:
+chcontext --ctx=1 ps aux
+Or use the v* tools:
+vps aux
+
+
+# Configuration
+
+- The network configuration:
+/etc/vservers/XXX/interfaces/
+
+- Mount points:
+/etc/vservers/XXX/fstab
+/etc/vservers/XXX/fstab.remote
+
+- Set the autostart flag:
+echo "default" > /etc/vservers/XXX/apps/init/mark
+
+
+# Compilation util-vserver
+aptitude install iproute vlan e2fslibs-dev dietlibc-dev libbeecrypt6-dev python-dev
+aptitude install -t etch-backports schedutils
+./configure --sysconfdir=/etc --localstatedir=/var
+make install
+make install-distribution
+update-rc.d vservers-default defaults
+
+
+# Sensible default PATH
+
+mkdir -p /etc/vservers/.defaults/apps/init/
+echo "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" > /etc/vservers/.defaults/apps/init/environment
+That doesn't work if 'rc' redefines the default PATH (doesn't in Sarge, does in Etch).
+Check "What is the initial PATH?" at http://linux-vserver.org/Frequently_Asked_Questions
+Bug people here? http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=227540#35
+
+
+# Choosing the latest 'stable' version
+
+There is a combination of 2 version numbers to select a VServer patch:
+- the vanilla kernel version from kernel.org: 2.6.18.5, 2.6.20...
+- the VServer development line: 2.0, 2.2, 2.3...
+
+Versions are independents, e.g.:
+2.6.19.3-vs2.2.0-rc11
+2.6.19.3-vs2.2.0-rc13
+2.6.19.4-vs2.2.0-rc13 # security fix
+
+Before, in order to get both a recent kernel (i.e. the security fixes)
+and a pretty-much stable VServer patch, we essentially followed the
+'testing' VServer line (2.2rc* as of 2007-02-21).
+http://ftp.linux-vserver.org/pub/kernel/vs2.2/testing/
+
+That proved wrong when the kernel crashed after a few hours uptime the
+other day, with ~9h downtime (which wasn't really noticed since it
+happened just before the unrelated multiple disk crash). Thus, the
+other solution is to use a more stable version of vserver, and apply
+security fixes from kernel.org manually. Maybe we can follow
+Slackware's kernel, I've heard they don't patch it, but follow
+security.
+
+Right now (4/2007) they're a recent stable version for 2.6.19 and
+2.6.20 which means there's no problem. The problem was rather a couple
+weeks ago, when the only stable version for 2.6.17, whose last
+kernel.org patch was .14 on 13-Oct-2006. I don't know if 2.6.17.14 was
+free of known security issues... In such case I guess we should have
+sticked to vserver's latest rebase attempt, 2.6.18.5/vs2.0.3-rc1 +
+patch 2.6.18.5->8 - instead of 2.6.20/vs2.2-rcX.
+
+On the other hand I got a much better quality from VS2.2 than from
+Debian Backports'/Etch's 2.6.18-4-vserver-k7/vs2.0.2.2-rc9.patch,
+which crashed more than one in my hands after shutting down a
+vserver. Compare that to one serious crash, which seemingly happened
+during a disk failure. Oh right, Etch's 2.0.2.2-rc9 is just 3 days
+earlier than that 2.0.3-rc1 I just mentioned; I guess the issue was
+rather trying 2.6.20 too early whicle 2.6.19 was still available.
+
+Also subscribe to linux-kernel-announce to follow new releases:
+mailto:majordomo@vger.kernel.org?body=subscribe linux-kernel-announce
+Unfortunately this doesn't include the 4th-digit security/bugfix
+releases for the latest stable (eg 2.6.20.4 for the 2.6.20 stable).
+
+Yeah, we also could stick to a Debian VServer kernel, but I also like
+to be able to compile our own kernel from source, and apply any patch
+we want on any version we want - go do that on Debian's heavily
+patched, 5h-to-build, outdated kernel. Plus as I said, running your
+distro's official VServer kernel is no synonym for stability.
+
+
+# VServer optimisation
+
+util-vserver >= 0.30.214 optimizes VServers start-up via a
+post-configuration scripts. It removes unnecessary rc?.d
+entries. Check /usr/lib/util-vserver/distributions/debian .
+
+This will make it more difficult to switch to another virtualisation
+system, but since all new vservers are created that way, it's better
+we find a way to re-add those rc?.d entries, should we switch to
+another virtualisation system, than preventing this optimization from
+happening. Re-adding those entries could be done by analysing a system
+created by plain debootstrap and reproducing the rc?.d symlinks for
+the above list of init.d scripts.

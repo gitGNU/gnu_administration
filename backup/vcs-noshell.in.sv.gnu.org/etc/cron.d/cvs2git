@@ -1,0 +1,6 @@
+#23,53 * * * *	cvs2git	/var/lib/cvs2git/bin/mirror-sv-sv emacs
+
+# Waiting for people to manifest themselves if they are interested in
+# restored those:
+#12,42 * * * *	cvs2git	/var/lib/cvs2git/bin/mirror-sv-sv diffutils
+#20,50 * * * *	cvs2git	/var/lib/cvs2git/bin/mirror-sv-sv texinfo

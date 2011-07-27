@@ -1,0 +1,40 @@
+<VirtualHost *:80>
+  ServerName bzr.sv.gnu.org
+  ServerAlias bzr.sv.nongnu.org
+  ServerAlias bzr.savannah.nongnu.org
+  Redirect permanent / http://bzr.savannah.gnu.org/
+</VirtualHost>
+<VirtualHost *:80>
+  ServerName bzr.savannah.gnu.org
+
+  DocumentRoot /var/www/bzr/
+  ScriptAlias /awstats.pl /var/www/bzr/awstats.pl
+
+  Alias /r/ /srv/bzr/
+  <Directory /srv/bzr/>
+    Options Indexes
+    AllowOverride None
+
+    # Disable PHP/Perl/scripting engines
+    # (except for empty filenames == directory index)
+    <Files "?*">
+      SetHandler default-handler
+    </Files>
+  </Directory>
+
+  <Proxy *>
+    Order deny,allow
+    Allow from all
+  </Proxy>
+  ProxyPass /r !
+  ProxyPass /robots.txt !
+  <Location "/lh/">
+#    ProxyPass http://127.0.0.1:8080/
+#    ProxyPassReverse http://127.0.0.1:8080/
+     ErrorDocument 404 "loggerhead disabled due to instability; if you're interesting in maintaining it, please check http://savannah.gnu.org/maintenance/Bzr
+  </Location>
+
+  LogLevel warn
+  CustomLog /var/log/apache2/bzr/access.log combined
+  ErrorLog /var/log/apache2/bzr/error.log
+</VirtualHost>

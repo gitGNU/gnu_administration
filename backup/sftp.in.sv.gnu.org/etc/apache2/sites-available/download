@@ -1,0 +1,175 @@
+<VirtualHost *:80>
+  ServerName  dl.savannah.gnu.org
+  ServerAlias download.sv.gnu.org
+  ServerAlias dl.sv.gnu.org
+  ServerAlias download.savannah.nongnu.org
+  ServerAlias dl.savannah.nongnu.org
+  ServerAlias download.sv.nongnu.org
+  ServerAlias dl.sv.nongnu.org
+
+  Redirect permanent / http://download.savannah.gnu.org/
+</VirtualHost>
+
+<VirtualHost *:80>
+  ServerName download.savannah.gnu.org
+  ServerAdmin savannah-hackers@gnu.org
+  
+  DocumentRoot /var/www/download/
+  <Directory />
+    Options FollowSymLinks
+    AllowOverride None
+  </Directory>
+  <Directory /var/www>
+    Options None
+    AllowOverride None
+  </Directory>
+  
+  <Directory /srv/download>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+
+    # Disable script engines
+    # Method 1:
+    #ForceType application/octet-stream
+    #ForceType text/plain
+
+    # Method 2:
+    <IfModule mod_php5.c>
+      # Tested with Apache2 + mod-php5
+      php_flag engine off
+    </IfModule>
+    <IfModule sapi_apache2.c>
+      # Not working with Apache1 + mod-php5
+      php_flag engine off
+    </IfModule>
+    <IfModule mod_perl.c>
+      # Disable mod_perl
+    </IfModule>
+    # Disable mod_python...
+
+    # Method 3:
+    # Disable PHP/Perl/scripting engines
+    # (except for empty filenames == directory index)
+    <Files "?*">
+      SetHandler default-handler
+    </Files>
+
+    ReadmeName  /footer.html
+    ErrorDocument 404 /cgi-bin/download-404.cgi
+  </Directory>
+  Redirect permanent /releases/freefont/ ftp://ftp.gnu.org/pub/gnu/freefont/
+ 
+  ScriptAlias /cgi-bin/ /usr/lib/cgi-bin/
+  <Directory "/usr/lib/cgi-bin">
+    AllowOverride None
+    Options ExecCGI
+  </Directory>
+
+  Alias /mirmon/icons/ "/usr/share/mirmon/icons/"
+  ScriptAlias /awstats.pl /var/www/download/awstats.pl
+
+# Send requests for files to the Apache2::Geo::Mirror redirector
+RewriteEngine On
+RewriteRule ^/releases/(.*[^/])$ /releases-redirect/$1 [NS,R,L]
+
+# Keep releases-noredirect for backwards compatibility (despite the name, it does a redirect now)
+Redirect /releases-noredirect/ http://download-mirror.savannah.gnu.org/releases/
+
+# Serve everything else locally (i.e. directory listings) 
+Alias /releases/ "/srv/download/"
+
+<Location /releases-redirect>
+   SetHandler perl-script
+   PerlSetVar GeoIPDBFile "/usr/local/share/GeoIP/GeoIP.dat"
+   PerlSetVar GeoIPMirror "/usr/local/share/GeoIP/download.txt"
+   PerlSetVar GeoIPFlag Standard
+   PerlSetVar GeoIPDefault http://download-mirror.savannah.gnu.org/releases
+   PerlResponseHandler Apache2::Geo::Mirror->auto_redirect
+</Location>
+
+# Doesn't work:
+#Alias /releases2 /srv/download
+#<Directory "/srv/download">
+#  <Files "*">
+#    SetHandler perl-script
+#    PerlSetVar GeoIPDBFile "/usr/local/share/GeoIP/GeoIP.dat"
+#    PerlSetVar GeoIPMirror "/usr/local/share/GeoIP/download.txt"
+#    PerlSetVar GeoIPFlag Standard
+##    PerlSetVar GeoIPDefault us
+#    PerlSetVar GeoIPDefault http://download.savannah.nongnu.org/releases-noredirect
+#    PerlResponseHandler Apache2::Geo::Mirror->auto_redirect
+#  </Files>
+#</Directory>
+  
+  <Location /server-status>
+      SetHandler server-status
+#      Order deny,allow
+#      Deny from all
+#      Allow from .example.com
+  </Location>
+
+  ErrorLog /var/log/apache2/download/error.log
+  # Possible values include: debug, info, notice, warn, error, crit,
+  # alert, emerg.
+  LogLevel warn
+  
+  CustomLog /var/log/apache2/download/access.log combined
+  ServerSignature On
+</VirtualHost>
+
+
+# This site is for direct downloads from savannah
+<VirtualHost *:80>
+  ServerName download-mirror.savannah.gnu.org
+  ServerAdmin savannah-hackers@gnu.org
+  
+  DocumentRoot /var/www/download/
+  <Directory />
+    Options FollowSymLinks
+    AllowOverride None
+  </Directory>
+  <Directory /var/www>
+    Options None
+    AllowOverride None
+  </Directory>
+  
+  <Directory /srv/download>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+
+    # Method 2:
+    <IfModule mod_php5.c>
+      # Tested with Apache2 + mod-php5
+      php_flag engine off
+    </IfModule>
+    <IfModule sapi_apache2.c>
+      # Not working with Apache1 + mod-php5
+      php_flag engine off
+    </IfModule>
+    <IfModule mod_perl.c>
+      # Disable mod_perl
+    </IfModule>
+    # Disable mod_python...
+
+    # Method 3:
+    # Disable PHP/Perl/scripting engines
+    # (except for empty filenames == directory index)
+    <Files "?*">
+      SetHandler default-handler
+    </Files>
+
+    ReadmeName  /footer-mirror.html
+  </Directory>
+  Redirect permanent /releases/freefont/ ftp://ftp.gnu.org/pub/gnu/freefont/
+
+  Alias /releases/ "/srv/download/"
+
+  ErrorLog /var/log/apache2/download/error.log
+  # Possible values include: debug, info, notice, warn, error, crit,
+  # alert, emerg.
+  LogLevel warn
+  
+  CustomLog /var/log/apache2/download/access.log combined
+  ServerSignature On
+</VirtualHost>
+

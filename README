@@ -1,0 +1,14 @@
+infra/ is a bzr working directory.
+When you make changes there:
+
+Keep up-to-date:
+ bzr update
+
+Review your changes:
+ bzr diff
+
+Commit
+ bzr commit -m "commit message"
+
+Note: commit mail notification is on, cf. bzr-email package and
+~/.bazaar/bazaar.conf .

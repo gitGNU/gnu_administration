@@ -1,0 +1,17 @@
+<VirtualHost *:80>
+  Include sites-available/sv.nongnu.inc
+</VirtualHost>
+
+<VirtualHost 10.1.0.104:443>
+  SSLEngine on
+  SSLCertificateFile    /etc/apache2/ssl.crt/savannah.nongnu.org.pem
+  SSLCertificateKeyFile /etc/apache2/ssl.key/savannah.nongnu.org.pem
+
+  # Move to plain HTTP if it's a crawler: no duplicate crawling, no
+  # direct links to https (and certificate issues)
+  RewriteEngine on
+  RewriteCond  %{ENV:is_a_robot}	1
+  RewriteRule ^(.*) http://%{HTTP_HOST}$1 [redirect=permanent,last]
+
+  Include sites-available/sv.nongnu.inc
+</VirtualHost>

@@ -1,0 +1,78 @@
+aptitude install libapache2-mod-php5 php5-mysql
+a2enmod ssl
+a2enmod rewrite
+a2enmod proxy_http # /maintenance/ (ZWiki)
+a2enmod include # /tls/
+
+./savane.sh
+#file: /etc/cron.d/sv-export
+
+# Access for localhost and separate hosts / vservers
+mysql -e "GRANT SELECT,INSERT,UPDATE,DELETE ON savane.* TO 'savannahscripts' IDENTIFIED BY 'SCRIPTPASS';"
+
+#file: /etc/cron.daily/sv_list_groups
+touch /root/.my.cnf
+chmod 600 /root/.my.cnf
+echo 'SCRIPTPASS' > /root/.my.cnf
+
+
+## ZWiki
+aptitude install zope2.10
+# Install ZWiki in /var/lib/zope2.10/instance/default/Products/ZWiki
+# create a MailHost object in the Root Folder so Zope can send e-mails.
+
+# Properties on the wiki folder:
+# - edits_need_username=true - cf. http://zwiki.org/LinkSpam
+# - max_anonymous_links = 10
+# - mail_replyto=INVALID.NOREPLY@gnu.org - cf. http://zwiki.org/HowToSetUpMailOut
+# - mailout_policy=edits
+# - site_logo=<img style="border: 0" src="http://savannah.gnu.org/favicon.ico" alt="Wiki Home" />
+#   cf. http://zwiki.org/CustomizingAppearance#customizing-with-properties
+
+# Create a File object named 'stylesheet' in the 'maintenance' folder,
+# and copy
+# /var/lib/zope2.10/instance/default/Products/ZWiki/skins/zwiki/stylesheet.css
+# as contents. You now can edit the stylesheet (I suggest installing MozEx).
+# cf. http://zwiki.org/HowToCustomizeZwikiStandardSkin
+
+
+## XCache
+# http://trac.lighttpd.net/xcache/
+aptitude install php5-xcache
+
+# Or: manual installation:
+aptitude install build-essential
+aptitude install php5-dev
+phpize --clean && phpize
+./configure --enable-xcache
+make
+make install
+cp xcache.ini /etc/php5/apache2/conf.d/xcache.ini
+
+#file: /etc/php5/apache2/conf.d/xcache.ini
+# Modified conf:
+#zend_extension = /usr/lib/php5/20060613+lfs/xcache.so
+#; not needed:
+#;extension = xcache.so
+#
+#xcache.admin.enable_auth =  Off
+#;xcache.admin.user = "admin"
+#;; pass=admin
+#;xcache.admin.pass = "21232f297a57a5a743894a0e4a801fc3"
+#
+#xcache.size  =                64M
+#; set to cpu count (cat /proc/cpuinfo |grep -c processor)
+#xcache.count =                 4
+#xcache.var_size  =           64M
+
+# In sv.inc:
+# Alias /xcache /usr/src/xcache/admin
+# Alias /xcache /usr/share/xcache/admin
+
+
+## Memcached
+aptitude install memcached
+# Only listen on 10.0.0.103
+sed -i -e 's/^#-l.*/-l 10.0.0.103/' /etc/memcached.conf
+# Add firewall rule:
+#iptables -I INPUT 1 -d 10.0.0.103 -p tcp --dport 11211 -s '!' 10.0.0.103 -j REJECT

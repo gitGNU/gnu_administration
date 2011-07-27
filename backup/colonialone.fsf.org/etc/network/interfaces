@@ -1,0 +1,61 @@
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interface
+# (rightmost looking from back) black cable to port 22 of ge-sw1.qcy
+#allow-hotplug eth1
+#iface eth1 inet dhcp
+auto eth1
+iface eth1 inet static
+  address 140.186.70.51
+  gateway 140.186.70.1
+  netmask 255.255.255.0
+  hostname colonialone.fsf.org
+  #pre-up iptables-restore < /etc/default/iptables-rules
+  pre-up /etc/network/firewall.sh
+  post-up ip addr add 140.186.70.70/24 dev eth1  # sv.gnu.org
+  post-up ip addr add 140.186.70.71/24 dev eth1  # sv.nongnu.org
+  post-up ip addr add 140.186.70.72/24 dev eth1  # vcs-noshell
+  post-up ip addr add 140.186.70.73/24 dev eth1  # sftp
+  #post-up ip addr add 140.186.70.74/24 dev eth1
+  #post-up ip addr add 140.186.70.75/24 dev eth1
+
+allow-hotplug eth0
+iface eth0 inet static
+#  address 10.23.0.18
+#  address 10.1.0.1
+#  pre-up iptables-restore < /etc/default/iptables-rules
+  address 0.0.0.0
+  netmask 255.255.255.255
+
+# Internal network for domUs
+# (leftmost when looking from back) orange loopback cable to "old" savannah
+#auto eth1:in
+#iface eth1:in inet static
+#  address 10.1.0.1
+#  netmask 255.255.255.0
+
+# cf. /usr/share/doc/bridge-utils/README.Debian.gz
+auto br-in
+iface br-in inet static
+  address 10.1.0.1
+  netmask 255.255.255.0
+  #bridge_ports none
+  bridge_ports eth0
+  # optional
+  bridge_stp off
+  bridge_fd 0
+  bridge_maxwait 0
+  #bridge_hello 0
+  # Link to Savannah2004:
+  #up route add -net 199.232.41.64/27 dev br-in
+  #up route add -net 199.232.41.0/28 dev br-in
+  # Routing from Savannah2004
+  #up ip addr add 199.232.41.3/27 dev br-in
+  #up ip addr add 199.232.41.4/27 dev br-in
+  #up ip addr add 199.232.41.75/27 dev br-in
+  #up ip addr add 199.232.41.69/27 dev br-in

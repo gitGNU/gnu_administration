@@ -1,0 +1,13 @@
+# system-wide mercurial configuration file
+# See hgrc(5) for more information
+[trusted]
+# Avoid "remote: Not trusting file project/.hg/hgrc from untrusted
+# user root" warnings
+users = root
+
+[web]
+style = svweb
+deny_push = *
+push_ssl = false
+# Probably resource-consuming:
+#allow_archive = gz zip bz2

@@ -1,0 +1,6 @@
+# Those are only audio/video multimedia files. We doubt they are
+# worthy of textual indexing.
+
+User-agent: *
+Disallow: /audio/
+Disallow: /video/

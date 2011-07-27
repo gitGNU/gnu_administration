@@ -1,0 +1,5 @@
+# People tend to use .sig, better add a good content/type. The
+# widespread and already-configured alternative is to use .pgp - but
+# PGP is non-free software, .sig is still better (best is .gpg ;))
+
+AddType application/pgp-signature .sig

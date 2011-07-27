@@ -1,0 +1,53 @@
+# Manually compile while disabling GPL-incompatible OpenSSL
+#git clone git://hjemli.net/pub/git/cgit
+#cd cgit
+#git checkout -b origin/stable
+
+apt-get install zlib1g-dev
+
+VERSION=0.8.3.4
+wget http://hjemli.net/git/cgit/snapshot/cgit-$VERSION.tar.gz
+tar xzf cgit-$VERSION.tar.gz
+ln -nsf cgit-$VERSION cgit
+cd cgit-$VERSION
+# cat <<EOF > cgit.conf
+# SHA1_HEADER = "mozilla-sha1/sha1.h"
+# CFLAGS += -DNO_OPENSSL=1
+# EOF
+sed -i -e 's/ -lcrypto//' Makefile
+make get-git
+cat <<EOF > git/config.mak
+NO_OPENSSL=1
+EOF
+make
+make install DESTDIR=`pwd`/t
+strip t/var/www/htdocs/cgit/cgit.cgi
+
+rsync -avHS builder.in.sv.gnu.org:/usr/src/cgit/t/var/www/htdocs/cgit/ cgit.tmp/
+rsync -avHS --delete cgit.tmp/ vcs-noshell.in.sv.gnu.org:/var/www/git/cgit/
+rm -rf cgit.tmp
+
+mkdir -m 775 /var/cache/cgit
+chown root:www-data /var/cache/cgit/
+
+
+
+#===
+
+# (attempt to) rebuild http://redmine.stbuehler.de/wiki/debianserver/Cgit
+
+cat <<EOF >> /etc/apt/sources.list
+deb-src http://debian.stbuehler.de/debian/ stbuehler main
+EOF
+gpg --keyserver pgp.surfnet.nl --recv 80121CD2479689D8
+gpg -armor --export 80121CD2479689D8 | apt-key add -
+apt-get update
+
+apt-get source cgit
+
+apt-get install cdbs
+apt-get install -t etch-backports debhelper
+cd cgit-0.8.1
+sed -i -e 's/libssl-dev, libcurl4-openssl-dev/libcurl3-gnutls/' debian/control
+pdebuild --pbuilder cowbuilder --buildresult /usr/src/patched/debs/vcs-noshell
+# debhelper 7 not installed by pbuilder???

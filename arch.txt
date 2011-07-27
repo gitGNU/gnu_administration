@@ -1,0 +1,35 @@
+# SFTP access
+apt-src install ssh
+
+a2enmod dav_fs
+
+# Read-only DAV access - needs limitations:
+#file: /etc/apache2/sites-available/default
+
+
+## Savane
+./savane.sh
+
+
+## ArchZoom
+aptitude install archzoom
+
+# TODO: what is /var/cache/archzoom/ for?
+
+# Activate the creation of a revlib to store the requested revisions in cache:
+sed -i -e 's/auto_library_updating =.*/auto_library_updating = 1/' /etc/archzoom/archzoom.conf
+chown -R www-data: /etc/archzoom/.arch-params
+mkdir -m 755 /etc/archzoom/archzoom-revlib
+chown www-data: /etc/archzoom/archzoom-revlib
+
+# Don't show directories recursively by default:
+sed -i -e 's/implicit_expanded_dir_max_files =.*/implicit_expanded_dir_max_files = 0/' /etc/archzoom/archzoom.conf
+
+# Clean-up ArchZoom's temporary files (revisions and highlight tmp files)
+cat <<'EOF' > /etc/cron.d/archzoom_cleanup
+0 * * * *       www-data        find /tmp -type d -mmin +60 -print0 | xargs -r0 rm -rf
+EOF
+
+# file: /etc/apache2/sites-available/arch
+#   ScriptAlias /archzoom /usr/lib/cgi-bin/archzoom.cgi
+# TODO: create a cronjob to monitor the size of /etc/archzoom/archzoom-revlib/

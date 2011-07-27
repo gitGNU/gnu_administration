@@ -1,0 +1,206 @@
+diff -u -r gitweb/branches.tmpl svweb/branches.tmpl
+--- gitweb/branches.tmpl	2009-07-23 17:58:06.000000000 +0000
++++ svweb/branches.tmpl	2009-09-15 12:38:23.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / branches
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / branches
+ </div>
+ 
+ <div class="page_nav">
+diff -u -r gitweb/changelog.tmpl svweb/changelog.tmpl
+--- gitweb/changelog.tmpl	2009-07-23 17:58:06.000000000 +0000
++++ svweb/changelog.tmpl	2009-09-15 12:37:55.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / changelog
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / changelog
+ </div>
+ 
+ <form action="{url}log">
+diff -u -r gitweb/changeset.tmpl svweb/changeset.tmpl
+--- gitweb/changeset.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/changeset.tmpl	2009-09-15 12:38:49.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / changeset
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / changeset
+ </div>
+ 
+ <div class="page_nav">
+diff -u -r gitweb/error.tmpl svweb/error.tmpl
+--- gitweb/error.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/error.tmpl	2009-09-15 12:39:03.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / error
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / error
+ </div>
+ 
+ <div class="page_nav">
+diff -u -r gitweb/fileannotate.tmpl svweb/fileannotate.tmpl
+--- gitweb/fileannotate.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/fileannotate.tmpl	2009-09-15 12:39:19.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / annotate
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / annotate
+ </div>
+ 
+ <div class="page_nav">
+diff -u -r gitweb/filediff.tmpl svweb/filediff.tmpl
+--- gitweb/filediff.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/filediff.tmpl	2009-09-15 12:39:33.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / diff
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / diff
+ </div>
+ 
+ <div class="page_nav">
+diff -u -r gitweb/filerevision.tmpl svweb/filerevision.tmpl
+--- gitweb/filerevision.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/filerevision.tmpl	2009-09-15 12:39:48.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / file revision
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / file revision
+ </div>
+ 
+ <div class="page_nav">
+diff -u -r gitweb/graph.tmpl svweb/graph.tmpl
+--- gitweb/graph.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/graph.tmpl	2009-09-15 12:40:08.000000000 +0000
+@@ -9,7 +9,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / graph
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / graph
+ </div>
+ 
+ <form action="{url}log">
+diff -u -r gitweb/index.tmpl svweb/index.tmpl
+--- gitweb/index.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/index.tmpl	2009-09-15 12:42:28.000000000 +0000
+@@ -1,11 +1,24 @@
+ {header}
+-<title>Mercurial repositories index</title>
++<title>Savannah Mercurial Hosting</title>
+ </head>
+ <body>
+ 
+ <div class="page_header">
+     <a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a>
+-    Repositories list
++    <a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / Repositories list
++</div>
++
++<div class="index_include">
++<strong>Welcome to Savannah Mercurial hosting!</strong>
++
++<p>
++<a href="http://hgbook.red-bean.com/hgbook.html">Book</a>: Distributed revision control with Mercurial<br />
++<a href="http://www.selenic.com/mercurial/wiki/index.cgi/Tutorial">Tutorial</a><br />
++<a href="http://savannah.gnu.org/maintenance/UsingHg">Savannah guide</a><br />
++
++<a href="http://freehg.org/">freeHg.org</a>: another Mercurial hosting platform<br />
++<a href="http://savannah.gnu.org/maintenance/Hg">Savannah design notes</a><br />
++</p>
+ </div>
+ 
+ <table cellspacing="0">
+diff -u -r gitweb/manifest.tmpl svweb/manifest.tmpl
+--- gitweb/manifest.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/manifest.tmpl	2009-09-15 12:43:36.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / files
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / files
+ </div>
+ 
+ <div class="page_nav">
+diff -u -r gitweb/notfound.tmpl svweb/notfound.tmpl
+--- gitweb/notfound.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/notfound.tmpl	2009-09-15 12:43:55.000000000 +0000
+@@ -5,7 +5,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a> Not found: {repo|escape}
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a> <a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / Not found: {repo|escape}
+ </div>
+ 
+ <div class="page_body">
+diff -u -r gitweb/search.tmpl svweb/search.tmpl
+--- gitweb/search.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/search.tmpl	2009-09-15 12:44:10.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / search
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / search
+ 
+ <form action="{url}log">
+ {sessionvars%hiddenformentry}
+diff -u -r gitweb/shortlog.tmpl svweb/shortlog.tmpl
+--- gitweb/shortlog.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/shortlog.tmpl	2009-09-15 12:44:21.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / shortlog
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / shortlog
+ </div>
+ 
+ <form action="{url}log">
+diff -u -r gitweb/summary.tmpl svweb/summary.tmpl
+--- gitweb/summary.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/summary.tmpl	2009-09-15 12:48:33.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / summary
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / summary
+ 
+ <form action="{url}log">
+ {sessionvars%hiddenformentry}
+@@ -34,6 +34,7 @@
+ <tr><td>description</td><td>{desc}</td></tr>
+ <tr><td>owner</td><td>{owner|obfuscate}</td></tr>
+ <tr><td>last change</td><td>{lastchange|rfc822date}</td></tr>
++<tr><td>project home</td><td><a href="http://savannah.gnu.org/projects/{repo|stripdir}">http://savannah.gnu.org/projects/{repo|stripdir}</a></td></tr>
+ </table>
+ 
+ <div><a  class="title" href="{url}shortlog{sessionvars%urlparameter}">changes</a></div>
+diff -u -r gitweb/tags.tmpl svweb/tags.tmpl
+--- gitweb/tags.tmpl	2009-07-23 17:58:07.000000000 +0000
++++ svweb/tags.tmpl	2009-09-15 12:44:46.000000000 +0000
+@@ -8,7 +8,7 @@
+ <body>
+ 
+ <div class="page_header">
+-<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / tags
++<a href="http://mercurial.selenic.com/" title="Mercurial" style="float: right;">Mercurial</a><a href="http://hg.savannah.gnu.org/hgweb">Hg@sv</a> / <a href="{url}summary{sessionvars%urlparameter}">{repo|escape}</a> / tags
+ </div>
+ 
+ <div class="page_nav">

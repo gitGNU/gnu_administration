@@ -1,0 +1,28 @@
+<VirtualHost *:80>
+  ServerName hg.sv.gnu.org
+  ServerAlias hg.sv.nongnu.org
+  ServerAlias hg.savannah.nongnu.org
+  Redirect permanent / http://hg.savannah.gnu.org/
+</VirtualHost>
+
+<VirtualHost *:80>
+  ServerName hg.savannah.gnu.org
+
+  DocumentRoot /var/www/hg/
+  ScriptAlias /awstats.pl /var/www/hg/awstats.pl
+
+  Alias /r/ /srv/hg/
+  <Directory /srv/hg/>
+    Options Indexes
+    AllowOverride None
+  </Directory>
+
+  Alias /static/ /usr/share/mercurial/templates/static/
+
+  WSGIScriptAlias /hgweb /var/www/off-site/hgweb/hgwebdir.wsgi
+  #ScriptAlias /hgweb /var/www/off-site/hgweb/hgwebdir.cgi
+
+  LogLevel warn
+  CustomLog /var/log/apache2/hg/access.log combined
+  ErrorLog /var/log/apache2/hg/error.log
+</VirtualHost>

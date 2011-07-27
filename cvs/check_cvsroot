@@ -1,0 +1,3 @@
+# check for misplaced CVSROOT
+MAILTO=savannah-reports-private@gnu.org
+0 0 * * *	root	for i in /vservers/cvs/sources/* /vservers/cvs/web/*; do find $i -type d -name "CVSROOT" -mindepth 2; done

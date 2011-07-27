@@ -1,0 +1,35 @@
+<VirtualHost *:80>
+  Include sites-available/sv.gnu.inc
+</VirtualHost>
+
+# Those are valid DNS entries, but we do not want people to stick with
+# those typos
+<VirtualHost *:80>
+  ServerName savana.gnu.org
+  ServerAlias savanna.gnu.org
+  ServerAlias savanah.gnu.org
+  ServerAlias savannah.gnu.org
+  ServerAlias subversions.gnu.org
+  ServerAlias sub.gnu.org
+  ServerAlias anoncvs.gnu.org
+  ServerAlias farm.gnu.org
+  ServerAlias sv.gnu.org
+
+  Redirect permanent / http://savannah.gnu.org/
+
+  CustomLog /var/log/apache2/access.log combined
+</VirtualHost>
+
+<VirtualHost 10.1.0.103:443>
+  SSLEngine on
+  SSLCertificateFile    /etc/apache2/ssl.crt/savannah.gnu.org.pem
+  SSLCertificateKeyFile /etc/apache2/ssl.key/savannah.gnu.org.pem
+
+  # Move to plain HTTP if it's a crawler: no duplicate crawling, no
+  # direct links to https (and certificate issues)
+  RewriteEngine on
+  RewriteCond  %{ENV:is_a_robot}	1
+  RewriteRule ^(.*) http://%{HTTP_HOST}$1 [redirect=permanent,last]
+
+  Include sites-available/sv.gnu.inc
+</VirtualHost>

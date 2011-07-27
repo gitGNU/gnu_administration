@@ -1,0 +1,9 @@
+PATH=/usr/bin:/bin:/usr/local/bin:/usr/sbin
+35,05 * * * *	root	sv_groups --cron --only-cvs --only-homepage --only-svn --only-git --only-hg --only-bzr
+*/20 * * * *	root	/usr/src/infra/cvs/generate_log_accum.pl
+
+*/15 * * * *	root	/usr/src/infra/git/refresh-project-list.sh && /usr/src/infra/git/sv_cgit.pl
+
+# Create homedirs and^W^W authorized_keys files.
+#*/5 * * * *     root    sv_homedirs && sv_authorized_keys
+*/5 * * * *	 root	 sv_authorized_keys --single-dir=/etc/ssh/authorized_keys/

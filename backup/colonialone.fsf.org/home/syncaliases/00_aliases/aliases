@@ -1,0 +1,13 @@
+root: savannah-hackers-private@gnu.org
+hostmaster: savannah-hackers-private@gnu.org
+postmaster: savannah-hackers-private@gnu.org
+admin: savannah-hackers-private@gnu.org
+webmaster: savannah-hackers-private@gnu.org
+# - Savane's automated e-mails
+www-data: :blackhole:
+INVALID.NOREPLY: :blackhole:
+# - CVS rsync'd repositories
+libcrsync: :blackhole:
+gawkrsync: :blackhole:
+# CVS2Git
+cvs2git: savannah-hackers-private@gnu.org

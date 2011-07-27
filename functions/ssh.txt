@@ -1,0 +1,1 @@
+echo "AllowTcpForwarding no" >> /etc/ssh/sshd_config

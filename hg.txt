@@ -1,0 +1,66 @@
+# 'hg'
+aptitude install mercurial
+
+# Anonymous access and web browsing are served the same way: through a
+# CGI. For efficiency we'll run it with mod_wsgi.
+
+# http://www.selenic.com/mercurial/wiki/index.cgi/modwsgi
+aptitude install libapache2-mod-wsgi
+mkdir /var/www/off-site/hgweb
+
+# The old option was to run mod_python
+# http://www.newartisans.com/blog_files/mercurial.with.mod_python.php
+# aptitude install libapache2-mod-python
+
+
+# Stub WSGI:
+# Cf. hg/hgwebdir.wsgi
+
+# Stub CGI:
+# Cf. hg/hgwebdir.cgi
+
+# Essentially: change the configuration location to
+# /etc/mercurial/hgwebdir.conf, enable Python errors in the web
+# browser, enable UTF-8.
+
+
+# NOT NEEDED ANYMORE (hgwebdir is WSGI ready)
+# file: /var/www/off-site/hgweb/modpython_gateway.py
+# Sources:
+#http://www.aminus.net/browser/modpython_gateway.py
+#http://www.aminus.net/wiki/ModPythonGateway
+#http://www.newartisans.com/downloads_files/modpython_gateway.py
+
+
+# file: /etc/mercurial/hgwebdir.conf
+echo <<'EOF' > /etc/mercurial/hgwebdir.conf
+[collections]
+/srv/hg = /srv/hg
+
+# file: /etc/mercurial/hgrc (to be added in)
+[trusted]
+users = root
+
+[web]
+style = svweb
+deny_push = *
+push_ssl=false
+# Probably resource-consuming:
+#allow_archive = gz zip bz2
+EOF
+
+#####
+
+Apache2:
+
+  Alias /static/ /usr/share/mercurial/templates/static/
+
+  #WSGIScriptAlias /hgweb /var/www/off-site/hgweb/hgwebdir.wsgi
+  ScriptAlias /hgweb /var/www/off-site/hgweb/hgwebdir.cgi
+
+#  <Location /hgweb>
+#    PythonPath "sys.path + ['/var/www/off-site/hgweb']"
+#    SetHandler mod_python
+#    PythonHandler modpython_gateway::handler
+#    PythonOption wsgi.application hgwebdir::start
+#  </Location>

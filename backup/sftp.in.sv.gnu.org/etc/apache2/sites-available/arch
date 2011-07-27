@@ -1,0 +1,74 @@
+<VirtualHost *:80>
+	ServerName arch.gnu.org
+	ServerAlias arch.sv.gnu.org
+	ServerAlias arch.sv.nongnu.org
+	ServerAlias arch.savannah.nongnu.org
+
+	Redirect permanent / http://arch.savannah.gnu.org/
+</VirtualHost>
+
+<VirtualHost *:80>
+	ServerName arch.savannah.gnu.org
+	ServerAdmin webmaster@localhost
+	
+	DocumentRoot /var/www/arch/
+	IndexOptions FancyIndexing VersionSort NameWidth=*
+
+	<Directory />
+		Options FollowSymLinks
+		AllowOverride All
+	</Directory>
+
+	<Directory /var/www/>
+		Options Indexes MultiViews
+		AllowOverride All
+		Order allow,deny
+		allow from all
+	</Directory>
+
+	Alias /archives /srv/arch
+	<Directory /srv/arch>
+		Options Indexes
+		Order allow,deny
+		allow from all
+
+		# Read-only DAV access
+		DAV On
+		<LimitExcept GET HEAD OPTIONS PROPFIND>
+			Deny from All
+		</LimitExcept>
+
+		# Prevent people from executing stuff
+		AllowOverride None
+
+		# Should deactivate Apache-embedded script engines
+		# But actually it messes directory indexes up
+		# SetHandler default-handler
+
+		# Disable PHP/Perl/scripting engines
+		# (except for empty filenames == directory index)
+		<Files "?*">
+			SetHandler default-handler
+		</Files>
+	</Directory>
+
+	ScriptAlias /cgi-bin/ /usr/lib/cgi-bin/
+	<Directory "/usr/lib/cgi-bin">
+		AllowOverride None
+		Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+		Order allow,deny
+		Allow from all
+	</Directory>
+
+#	ScriptAlias /archzoom /usr/lib/cgi-bin/archzoom.cgi
+	ScriptAlias /awstats.pl /var/www/arch/awstats.pl
+
+	ErrorLog /var/log/apache2/arch/error.log
+
+	# Possible values include: debug, info, notice, warn, error, crit,
+	# alert, emerg.
+	LogLevel warn
+
+	CustomLog /var/log/apache2/arch/access.log combined
+	ServerSignature On
+</VirtualHost>

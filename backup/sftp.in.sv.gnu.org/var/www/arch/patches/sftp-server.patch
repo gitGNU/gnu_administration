@@ -1,0 +1,475 @@
+--- ./sftp-server.c	2004-02-23 17:19:15.000000000 -0500
++++ /home/mjflick/gnu/arch-subsystem/sftp-server.c	2005-12-11 16:54:03.000000000 -0500
+@@ -16,15 +16,38 @@
+ #include "includes.h"
+ RCSID("$OpenBSD: sftp-server.c,v 1.45 2004/02/19 21:15:04 markus Exp $");
+ 
++/*
++ * Patched for GNU Arch support 2005.
++ * Patch released under public domain.
++ * 2005 - Michael J. Flickinger
++ */
++
+ #include "buffer.h"
+ #include "bufaux.h"
+ #include "getput.h"
+ #include "log.h"
+ #include "xmalloc.h"
+ 
++#include <sys/types.h>
++#include <sys/file.h>
++#include <sys/stat.h>
++#include <syslog.h>
++#include <unistd.h>
++#include <time.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <regex.h>
++
++#include <fcntl.h>
++#include <pwd.h>
++
+ #include "sftp.h"
+ #include "sftp-common.h"
+ 
++#define SEAL_ARCHIVES "/utils/seal-archives"
++#define ARCHIVE_PATH "^/archives/|^/srv/arch/"  // path, (regex)
++#define COMMIT_NOTICE  "/utils/mail-on-commit.pl"  // comment out if not desired
++
+ /* helper */
+ #define get_int64()			buffer_get_int64(&iqueue);
+ #define get_int()			buffer_get_int(&iqueue);
+@@ -54,6 +77,45 @@ struct Stat {
+ 	Attrib attrib;
+ };
+ 
++struct passwd *password_data;
++
++
++static void
++sec_log (char *message, ...)
++{
++  va_list args;
++  char msgbuf[2048];
++
++  char *connection = getenv("SSH_CLIENT");
++
++  va_start(args, message);
++  vsnprintf(msgbuf, sizeof(msgbuf), message, args);
++
++  setlogmask (LOG_UPTO (LOG_NOTICE));
++  openlog ("sftp-server", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_DAEMON);
++  syslog(LOG_NOTICE, "user: %s -- uid: %i -- from: %s -- %s\n", password_data->pw_name, getuid(), connection, msgbuf);
++  closelog ();
++
++  va_end(args);
++}
++
++static int
++regex_match (char *pat, const char* string)
++{
++  int    result;
++  regex_t    re;
++
++  if (regcomp(&re, pat, REG_EXTENDED|REG_NOSUB) != 0)
++    return(-1);
++
++  result = regexec(&re, string, (size_t) 0, NULL, 0);
++  regfree(&re);
++  if (result != 0)
++    return(0);
++
++  return(1);
++}
++
+ static int
+ errno_to_portable(int unixerrno)
+ {
+@@ -138,6 +200,8 @@ handle_init(void)
+ 
+ 	for (i = 0; i < sizeof(handles)/sizeof(Handle); i++)
+ 		handles[i].use = HANDLE_UNUSED;
++
++	sec_log("login to arch sftp subsystem");
+ }
+ 
+ static int
+@@ -386,20 +450,32 @@ process_open(void)
+ 	flags = flags_from_portable(pflags);
+ 	mode = (a->flags & SSH2_FILEXFER_ATTR_PERMISSIONS) ? a->perm : 0666;
+ 	TRACE("open id %u name %s flags %d mode 0%o", id, name, pflags, mode);
+-	fd = open(name, flags, mode);
+-	if (fd < 0) {
+-		status = errno_to_portable(errno);
+-	} else {
+-		handle = handle_new(HANDLE_FILE, name, fd, NULL);
+-		if (handle < 0) {
+-			close(fd);
+-		} else {
+-			send_handle(id, handle);
+-			status = SSH2_FX_OK;
+-		}
+-	}
+-	if (status != SSH2_FX_OK)
+-		send_status(id, status);
++		
++	if (regex_match(ARCHIVE_PATH, name))
++	  {
++	    if (pflags == 1)
++	      sec_log("\"%s\" opened for reading.", name);
++	    else
++	      sec_log("\"%s\" opened for writing.", name);
++
++	    fd = open(name, flags, mode);
++	    if (fd < 0) {
++	      status = errno_to_portable(errno);
++	    } else {
++	      handle = handle_new(HANDLE_FILE, name, fd, NULL);
++	      if (handle < 0) {
++		close(fd);
++	      } else {
++		send_handle(id, handle);
++		status = SSH2_FX_OK;
++	      }
++	    }
++	    if (status != SSH2_FX_OK)
++	      send_status(id, status);
++	  }
++	else
++	  send_status(id, 3);
++
+ 	xfree(name);
+ }
+ 
+@@ -465,6 +541,7 @@ process_write(void)
+ 	u_int len;
+ 	int handle, fd, ret, status = SSH2_FX_FAILURE;
+ 	char *data;
++	char *name;
+ 
+ 	id = get_int();
+ 	handle = get_handle();
+@@ -474,6 +551,7 @@ process_write(void)
+ 	TRACE("write id %u handle %d off %llu len %d", id, handle,
+ 	    (u_int64_t)off, len);
+ 	fd = handle_to_fd(handle);
++	name = handle_to_name(handle);
+ 	if (fd >= 0) {
+ 		if (lseek(fd, off, SEEK_SET) < 0) {
+ 			status = errno_to_portable(errno);
+@@ -491,6 +569,17 @@ process_write(void)
+ 			}
+ 		}
+ 	}
++
++	chmod(name, 0664);
++
++	sec_log("sealing: \"%s\"", name);
++
++	if (fork()==0)
++	  {
++	    execl(SEAL_ARCHIVES, SEAL_ARCHIVES, name, (char*)0);
++	    exit(1);
++	  }
++
+ 	send_status(id, status);
+ 	xfree(data);
+ }
+@@ -558,106 +647,22 @@ process_fstat(void)
+ 		send_status(id, status);
+ }
+ 
+-static struct timeval *
+-attrib_to_tv(const Attrib *a)
+-{
+-	static struct timeval tv[2];
+-
+-	tv[0].tv_sec = a->atime;
+-	tv[0].tv_usec = 0;
+-	tv[1].tv_sec = a->mtime;
+-	tv[1].tv_usec = 0;
+-	return tv;
+-}
+-
+ static void
+ process_setstat(void)
+ {
+-	Attrib *a;
+ 	u_int32_t id;
+-	char *name;
+-	int status = SSH2_FX_OK, ret;
+-
+ 	id = get_int();
+-	name = get_string(NULL);
+-	a = get_attrib();
+-	TRACE("setstat id %u name %s", id, name);
+-	if (a->flags & SSH2_FILEXFER_ATTR_SIZE) {
+-		ret = truncate(name, a->size);
+-		if (ret == -1)
+-			status = errno_to_portable(errno);
+-	}
+-	if (a->flags & SSH2_FILEXFER_ATTR_PERMISSIONS) {
+-		ret = chmod(name, a->perm & 0777);
+-		if (ret == -1)
+-			status = errno_to_portable(errno);
+-	}
+-	if (a->flags & SSH2_FILEXFER_ATTR_ACMODTIME) {
+-		ret = utimes(name, attrib_to_tv(a));
+-		if (ret == -1)
+-			status = errno_to_portable(errno);
+-	}
+-	if (a->flags & SSH2_FILEXFER_ATTR_UIDGID) {
+-		ret = chown(name, a->uid, a->gid);
+-		if (ret == -1)
+-			status = errno_to_portable(errno);
+-	}
+-	send_status(id, status);
+-	xfree(name);
++
++	send_status(id, 0);
+ }
+ 
+ static void
+ process_fsetstat(void)
+ {
+-	Attrib *a;
+ 	u_int32_t id;
+-	int handle, fd, ret;
+-	int status = SSH2_FX_OK;
+-	char *name;
+-
+ 	id = get_int();
+-	handle = get_handle();
+-	a = get_attrib();
+-	TRACE("fsetstat id %u handle %d", id, handle);
+-	fd = handle_to_fd(handle);
+-	name = handle_to_name(handle);
+-	if (fd < 0 || name == NULL) {
+-		status = SSH2_FX_FAILURE;
+-	} else {
+-		if (a->flags & SSH2_FILEXFER_ATTR_SIZE) {
+-			ret = ftruncate(fd, a->size);
+-			if (ret == -1)
+-				status = errno_to_portable(errno);
+-		}
+-		if (a->flags & SSH2_FILEXFER_ATTR_PERMISSIONS) {
+-#ifdef HAVE_FCHMOD
+-			ret = fchmod(fd, a->perm & 0777);
+-#else
+-			ret = chmod(name, a->perm & 0777);
+-#endif
+-			if (ret == -1)
+-				status = errno_to_portable(errno);
+-		}
+-		if (a->flags & SSH2_FILEXFER_ATTR_ACMODTIME) {
+-#ifdef HAVE_FUTIMES
+-			ret = futimes(fd, attrib_to_tv(a));
+-#else
+-			ret = utimes(name, attrib_to_tv(a));
+-#endif
+-			if (ret == -1)
+-				status = errno_to_portable(errno);
+-		}
+-		if (a->flags & SSH2_FILEXFER_ATTR_UIDGID) {
+-#ifdef HAVE_FCHOWN
+-			ret = fchown(fd, a->uid, a->gid);
+-#else
+-			ret = chown(name, a->uid, a->gid);
+-#endif
+-			if (ret == -1)
+-				status = errno_to_portable(errno);
+-		}
+-	}
+-	send_status(id, status);
++	
++	send_status(id, 0);
+ }
+ 
+ static void
+@@ -750,15 +755,25 @@ process_remove(void)
+ 	char *name;
+ 	u_int32_t id;
+ 	int status = SSH2_FX_FAILURE;
+-	int ret;
++        int ret;
+ 
+ 	id = get_int();
+ 	name = get_string(NULL);
+ 	TRACE("remove id %u name %s", id, name);
+-	ret = unlink(name);
+-	status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+-	send_status(id, status);
+-	xfree(name);
++
++	if (regex_match(ARCHIVE_PATH, name))
++	  {
++	    ret = unlink(name);
++	    status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
++	    if (ret != -1)
++	      sec_log("removed \"%s\"", name);
++
++	    send_status(id, status);
++	  }
++	else
++	  send_status(id, 3);
++
++        xfree(name);
+ }
+ 
+ static void
+@@ -775,9 +790,23 @@ process_mkdir(void)
+ 	mode = (a->flags & SSH2_FILEXFER_ATTR_PERMISSIONS) ?
+ 	    a->perm & 0777 : 0777;
+ 	TRACE("mkdir id %u name %s mode 0%o", id, name, mode);
+-	ret = mkdir(name, mode);
+-	status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+-	send_status(id, status);
++
++	if (regex_match(ARCHIVE_PATH, name))
++	  {
++	    sec_log("\"%s\" directory created.", name);
++
++	    ret = mkdir(name, 02775);
++	    sec_log("creating directory: %s\n", name);
++
++	    if (ret != -1)
++	      ret = chmod(name, 02775);
++
++	    status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
++	    send_status(id, status);
++	  }
++	else
++	  send_status(id, 3);
++
+ 	xfree(name);
+ }
+ 
+@@ -791,10 +820,19 @@ process_rmdir(void)
+ 	id = get_int();
+ 	name = get_string(NULL);
+ 	TRACE("rmdir id %u name %s", id, name);
+-	ret = rmdir(name);
+-	status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+-	send_status(id, status);
+-	xfree(name);
++	
++	if (regex_match(ARCHIVE_PATH, name))
++	  {
++	    sec_log("\"%s\" directory removed.", name);
++	
++	    ret = rmdir(name);
++	    status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
++	    send_status(id, status);
++	  }
++	else
++	  send_status(id, 3);
++
++        xfree(name);
+ }
+ 
+ static void
+@@ -833,26 +871,54 @@ process_rename(void)
+ 	id = get_int();
+ 	oldpath = get_string(NULL);
+ 	newpath = get_string(NULL);
+-	TRACE("rename id %u old %s new %s", id, oldpath, newpath);
+-	status = SSH2_FX_FAILURE;
+-	if (lstat(oldpath, &sb) == -1)
++	TRACE("request to rename id %u old %s new %s", id, oldpath, newpath);
++
++        sec_log("\"%s\" renamed to \"%s\".", oldpath, newpath);
++
++	if (regex_match(ARCHIVE_PATH, newpath))
++	  {
++	    status = SSH2_FX_FAILURE;
++	    if (lstat(oldpath, &sb) == -1)
++	      status = errno_to_portable(errno);
++	    else if (S_ISREG(sb.st_mode)) {
++	      /* Race-free rename of regular files */
++	      if (link(oldpath, newpath) == -1)
+ 		status = errno_to_portable(errno);
+-	else if (S_ISREG(sb.st_mode)) {
+-		/* Race-free rename of regular files */
+-		if (link(oldpath, newpath) == -1)
+-			status = errno_to_portable(errno);
+-		else if (unlink(oldpath) == -1) {
+-			status = errno_to_portable(errno);
+-			/* clean spare link */
+-			unlink(newpath);
+-		} else
+-			status = SSH2_FX_OK;
+-	} else if (stat(newpath, &sb) == -1) {
+-		if (rename(oldpath, newpath) == -1)
+-			status = errno_to_portable(errno);
+-		else
+-			status = SSH2_FX_OK;
+-	}
++	      else if (unlink(oldpath) == -1) {
++		status = errno_to_portable(errno);
++		/* clean spare link */
++		unlink(newpath);
++	      } else
++		status = SSH2_FX_OK;
++	    } else if (stat(newpath, &sb) == -1) {
++	      if (rename(oldpath, newpath) == -1)
++		status = errno_to_portable(errno);
++	      else
++		{
++		  status = SSH2_FX_OK;
++
++#ifdef COMMIT_NOTICE
++		  sec_log("commit notice program triggered.");
++		  
++		  if (fork()==0)
++		    {
++		      execl(COMMIT_NOTICE, COMMIT_NOTICE, newpath, (char*)0);
++		      exit(1);
++		    }
++#endif
++		  
++		}
++	    }
++
++	    
++	  }
++	else
++	  {
++	    status = 3; //permission denied
++	    sec_log("failed to rename \"%s\" to \"%s\".", oldpath, newpath);
++	  }
++
++
+ 	send_status(id, status);
+ 	xfree(oldpath);
+ 	xfree(newpath);
+@@ -893,10 +959,17 @@ process_symlink(void)
+ 	oldpath = get_string(NULL);
+ 	newpath = get_string(NULL);
+ 	TRACE("symlink id %u old %s new %s", id, oldpath, newpath);
+-	/* this will fail if 'newpath' exists */
+-	ret = symlink(oldpath, newpath);
+-	status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
+-	send_status(id, status);
++
++	if (regex_match(ARCHIVE_PATH, newpath))
++	  {
++	    /* this will fail if 'newpath' exists */
++	    ret = symlink(oldpath, newpath);
++	    status = (ret == -1) ? errno_to_portable(errno) : SSH2_FX_OK;
++	    send_status(id, status);
++	  }
++	else
++	  send_status(id, 3);
++
+ 	xfree(oldpath);
+ 	xfree(newpath);
+ }
+@@ -1020,6 +1093,8 @@ main(int ac, char **av)
+ 	int in, out, max;
+ 	ssize_t len, olen, set_size;
+ 
++	password_data = getpwuid(getuid());
++
+ 	/* XXX should use getopt */
+ 
+ 	__progname = ssh_get_progname(av[0]);

@@ -1,0 +1,64 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" 
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<!-- ViewVC :: http://www.viewvc.org/ -->
+<head>
+  <title>[if-any rootname][[][rootname]][else]ViewVC[end] [page_title]</title>
+  <meta name="generator" content="ViewVC [vsn]" />
+  <link rel="stylesheet" href="[docroot]/styles.css" type="text/css" />
+  [if-any rss_href]<link rel="alternate" type="application/rss+xml" title="RSS [[][rootname]][where]" href="[rss_href]" />[end]
+</head>
+<body>
+<div style="float: right; padding: 5px;"><a href="http://savannah.gnu.org/"><img src="http://savannah.gnu.org/images/common/floating.png" alt="Provided by GNU Savannah" width="148" height="125" /></a></div>
+
+<h3>Savannah CVS Surfing
+[is rootname "sources"]
+[else]
+  [is rootname "web"]
+  [else]
+- project <a href="http://savannah.nongnu.org/projects/[rootname]">[rootname]</a></div>
+  [end]
+[end]
+- [page_title]
+</h3>
+
+<table style="margin:0; border-spacing:0" class="vc_navheader">
+<tr>
+  <td>
+  [if-any nav_path]<strong>
+    [for nav_path]
+      [if-any nav_path.href]<a href="[nav_path.href]">[end]
+      [if-index nav_path first]
+        [[][nav_path.name]][else]
+        [nav_path.name][end][if-any nav_path.href]</a>[end]
+      [if-index nav_path last][else]/[end]
+    [end]
+    </strong>
+  [end]
+  </td>
+</tr>
+</table>
+
+<!-- It would be nice to detect a "web.cvs.s*.*gnu.org vhost, and use /web instead of /sources... -->
+[is roottype "cvs"]
+  [is rootname "sources"]
+  [else]
+    [is rootname "web"]
+    [else]
+      [is where ""]
+        <code>cvs -d:pserver:anonymous@cvs.sv.gnu.org:/sources/[rootname] co .</code>
+      [else]
+        <code>cvs -d:pserver:anonymous@cvs.sv.gnu.org:/sources/[rootname] co [where]</code>
+      [end]
+      <br />
+      <span style="font-size: smaller">(to check out web pages for a project, replace /sources with /web in the path above)</span>
+    [end]
+  [end]
+[end]
+[is roottype "svn"]
+  [is where ""]
+    <code>svn co svn://svn.sv.gnu.org/[rootname]</code>
+  [else]
+    <code>svn co svn://svn.sv.gnu.org/[rootname]/[where]</code>
+  [end]
+[end]

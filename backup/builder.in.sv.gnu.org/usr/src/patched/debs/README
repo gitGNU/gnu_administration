@@ -1,0 +1,6 @@
+This directory is shared through "deb ftp://10.0.0.106/ all/" and can
+be used to publish additional packages for all Savannah systems.
+
+# Rebuild index:
+apt-ftparchive packages all/ | gzip > all/Packages.gz 
+#apt-ftparchive sources  all/ | gzip > all/Packages.gz #FIXME

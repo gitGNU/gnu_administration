@@ -1,0 +1,32 @@
+#!/bin/bash
+# Fake Mailman password change. Adapt the parameters and SSH to lists.gnu.org
+
+USAGE="Usage: $0 -l name -p password --quiet"
+
+TEMP=`getopt --longoptions quiet --options l:p: --unquote --name $0 -- $*`
+if [ $? != 0 ]
+    then
+    echo $USAGE
+    exit 2
+fi
+eval set -- "$TEMP"
+
+for i in $*
+  do
+  case $i in
+      -l) list_name=$2; shift 2;;
+      -p) password=$2;  shift 2;;
+      --) shift; break;;
+  esac
+done
+
+if [ -z "$list_name" -o -z "$password" ]; then
+    echo $USAGE
+    exit 2
+fi
+
+cat <<EOF | ssh -T -i ~/.ssh/id_dsa.lists.gnu.org list@lists.gnu.org
+COMMAND=change_pw
+LIST_NAME=$list_name
+PASSWORD=$password
+EOF

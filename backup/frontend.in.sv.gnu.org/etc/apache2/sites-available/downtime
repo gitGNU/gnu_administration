@@ -1,0 +1,27 @@
+## Downtime message
+DocumentRoot "/var/www/offline-docroot/"
+<Directory "/var/www/offline-docroot/">
+    ErrorDocument 404 /index.html
+    Options None
+    AllowOverride None
+    Order allow,deny
+    Allow from all
+</Directory>
+
+<VirtualHost 10.1.0.103:443>
+  ServerName savannah.gnu.org
+  DocumentRoot "/var/www/offline-docroot"
+
+  SSLEngine on
+  SSLCertificateFile    /etc/apache/ssl.crt/savannah.gnu.org.crt
+  SSLCertificateKeyFile /etc/apache/ssl.key/savannah.gnu.org.key
+</VirtualHost>
+
+<VirtualHost 10.1.0.104:443>
+  ServerName savannah.nongnu.org
+  DocumentRoot "/var/www/offline-docroot"
+
+  SSLEngine on
+  SSLCertificateFile    /etc/apache/ssl.crt/savannah.nongnu.org.crt
+  SSLCertificateKeyFile /etc/apache/ssl.key/savannah.nongnu.org.key
+</VirtualHost>

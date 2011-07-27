@@ -1,0 +1,16 @@
+#!/bin/bash
+# Poll bzr repos for changes and send notifications by e-mail
+# This is ugly and I wish bzr had better support for server-side hooks _and_ more server-side hooks to begin with
+
+# It was first in a /etc/cron.d/ file, but cron regularly got in 'D'
+# state, and sometimes ignored the file. So something's going on with
+# the job, and so let's put it in a separate script and see.
+
+su rsavoye - -s /bin/bash -c "umask 0002 && /usr/src/bzr-hookless-email/bzr_hookless_email.py -f -e gnash-commit@gnu.org /srv/bzr/gnash/trunk -l 10000"
+su rsavoye - -s /bin/bash -c "umask 0002 && /usr/src/bzr-hookless-email/bzr_hookless_email.py -f -e gnash-commit@gnu.org /srv/bzr/gnash/rtmp -l 10000"
+su rsavoye - -s /bin/bash -c "umask 0002 && /usr/src/bzr-hookless-email/bzr_hookless_email.py -f -e gnash-commit@gnu.org /srv/bzr/gnash/avm2 -l 10000"
+su mattl - -s /bin/bash -c "umask 0002 && /usr/src/bzr-hookless-email/bzr_hookless_email.py -f -e librefm-commits@gnu.org /srv/bzr/librefm/trunk -l 10000"
+su mattl - -s /bin/bash -c "umask 0002 && /usr/src/bzr-hookless-email/bzr_hookless_email.py -f -e librefm-commits@gnu.org /srv/bzr/librefm/stable -l 10000"
+su kfogel - -s /bin/bash -c "umask 0002 && /usr/src/bzr-hookless-email/bzr_hookless_email.py -f -e emacs-diffs@gnu.org /srv/bzr/emacs/trunk -l 10000"
+su kfogel - -s /bin/bash -c "umask 0002 && /usr/src/bzr-hookless-email/bzr_hookless_email.py -f -e emacs-diffs@gnu.org /srv/bzr/emacs/emacs-23 -l 10000"
+su Beuc - -s /bin/bash -c "umask 0002 && /usr/src/bzr-hookless-email/bzr_hookless_email.py -f -e savannah-cvs@gnu.org /srv/bzr/administration -l 10000"

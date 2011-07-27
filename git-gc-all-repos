@@ -1,0 +1,19 @@
+#!/bin/bash
+log=$(mktemp /tmp/log-repo-gc-XXXXXX)
+printf "Run this to see more detail:\ntail -f $log\n"
+exec >$log
+
+cd /vservers/vcs-noshell/srv/git
+
+for dir in $(find . -maxdepth 2 -name '*.git'); do
+  echo $dir... 1>&2
+  start_kb=$(du -sk $dir|cut -f1)
+  printf '%-20s %u KiB->' $dir $start_kb
+  start_sec=$(date +%s)
+  git --git-dir=$dir gc
+  end_sec=$(date +%s)
+  elapsed=$((end_sec - start_sec))
+  end_kb=$(du -sk $dir|cut -f1)
+  percent_saved=$(echo "scale=2; 100 * ($start_kb - $end_kb) / $start_kb"|bc)
+  printf '%s (saved %s%% in %ss)\n' $end_kb $percent_saved $elapsed
+done

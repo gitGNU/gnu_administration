@@ -1,0 +1,166 @@
+#install savane
+aptitude --without-recommends install libdbd-mysql-perl libmailtools-perl
+make conf
+
+aptitude install ssh
+
+# Prevent error messages from being messed up
+MAKEDEV pty
+
+aptitude install libpam-umask
+cat >> /etc/pam.d/ssh <<'EOF'
+
+# Set umask for team work
+session    optional     pam_umask.so umask=002
+EOF
+
+cat <<'EOF' > /etc/membersh-conf.pl
+$allowed_paths = "(/srv/download|/releases|/srv/arch|/archives|/srv/audio-video)";
+$use_scp = '1';
+$regexp_scp = "^scp .*(-t|-f) (-- )?$allowed_paths";
+
+$use_sftp = '1';
+$bin_sftp = '/usr/lib/openssh/sftp-server';
+$regexp_sftp = '/usr/lib/openssh/sftp-server';
+
+$use_rsync = '1';
+$regexp_rsync = '^rsync --server ';
+$regexp_dir_rsync = "^$allowed_paths";
+EOF
+
+aptitude --without-recommends install apache2-mpm-worker
+sed -i 's|NO_START=1|NO_START=0|' /etc/default/apache2
+sed -i 's/IndexOptions FancyIndexing VersionSort/IndexOptions FancyIndexing VersionSort NameWidth=*/' /etc/apache2/apache2.conf
+# file: /etc/apache2/sites-available/download
+a2dissite default
+a2ensite download
+a2dismod userdir
+
+# enable rsync
+# functions/rsync-anonymous.txt
+cat <<EOF > /etc/rsync.conf
+use chroot = no
+
+[releases]
+        comment = Download area
+        path = /srv/download
+
+[audio-video]
+        comment = GNU and FSF audio and video repository
+        path = /srv/audio-video
+EOF
+
+##
+# Autoredirect setup
+
+aptitude install build-essential libapache2-mod-perl2-dev
+aptitude install -t etch-backports libgeo-ip-perl
+
+# Manually
+#aptitude install zlib1g-dev
+#wget http://geolite.maxmind.com/download/geoip/api/c/GeoIP-1.4.5.tar.gz
+#./configure &&	make &&	make install
+
+# Databases
+mkdir -p -m 755 /usr/local/share/GeoIP/
+cat <<'EOF' > /etc/cron.d/maxmind
+# Update Country/City IP-lookup databases from MaxMind
+0 3 10 * *    root    TMPFILE=`mktemp` || exit 1; wget http://www.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz -O- | zcat > $TMPFILE && mv -f $TMPFILE /usr/local/share/GeoIP/GeoIP.dat
+10 3 10 * *    root    TMPFILE=`mktemp` || exit 1; wget http://www.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz -O- | zcat > $TMPFILE && mv -f $TMPFILE /usr/local/share/GeoIP/GeoLiteCity.dat
+EOF
+
+apt-get install zlib1g-dev   # -lz
+#apt-get install apache2-dev  # apxs2, for test suite
+# TODO: do this non-interactively
+perl -MCPAN -e shell
+# > install Apache2::Geo::Mirror
+
+# If that doesn't work, do it manually
+#wget http://search.cpan.org/CPAN/authors/id/R/RK/RKOBES/Apache-GeoIP-1.63.tar.gz
+#tar xzf Apache-GeoIP-1.63.tar.gz 
+#cd Apache-GeoIP-1.63
+## edit Makefile.PL and get rid of the tests
+#perl Makefile.PL
+#make
+#make install
+
+aptitude install mirmon
+# file: /etc/mirmon.conf
+# file: /etc/apache2/sites-available/download
+touch /var/lib/mirmon/state
+mirmon -v -get all
+
+
+###
+
+# Webalizer
+aptitude install webalizer
+# Create one configuration file per domain in /etc/webalizer/
+# Change: LogFile, OutputDir, HostName, Incremental yes, one HideReferrer by domain alias (HideSite too?)
+# Import:
+name=download
+# Incremental:
+rm -f /var/www/$name/webalizer/* && (ls -rt /var/log/apache2/$name/access.log*) | while read log; do webalizer -c /etc/webalizer/$name.conf $log; done
+# Non-incremental:
+gcc -O2 webalizer-preparse.c && time for i in `ls -rt /var/log/apache2/$name/access.log*`; do echo $i >&2; zcat -f $i; done | ./a.out
+rm -f /var/www/$name/webalizer/*; for i in t/*; do echo; echo $i; webalizer -c /etc/webalizer/$name.conf $i; done
+
+# Proper bandwidth log in Apache (sent bytes rather than file size, supports interrupted/resumed downloads)
+## Properly log bandwidth:
+#LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O %v" combined
+
+# Awstats
+aptitude install awstats libnet-xwhois-perl libgeo-ip-perl liburi-perl
+# maxmind stuff
+
+cat <<EOF > /etc/awstats/awstats.conf.local
+#LogFormat=1 # Apache's "combined"
+# Combined IO: uses %O which supports interrupted/resumed downloads
+#LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O %v" combined
+LogFormat = "%host %other %logname %time1 %methodurl %code %other %refererquot %uaquot %other %bytesd %other"
+AllowFullYearView=3
+LoadPlugin="tooltips"
+LoadPlugin="decodeutfkeys"
+LoadPlugin="geoip GEOIP_STANDARD /usr/local/share/GeoIP/GeoIP.dat"
+# LoadPlugin="geoipfree" #old alternative to geoip
+LoadPlugin="geoip_city_maxmind GEOIP_STANDARD /usr/local/share/GeoIP/GeoLiteCity.dat"
+LoadPlugin="hostinfo"
+
+DNSLookup=0
+EOF
+
+cat <<EOF > /etc/awstats/awstats.arch.conf
+Include "/etc/awstats/awstats.conf"
+Include "/etc/awstats/awstats.conf.local"
+
+SiteDomain="arch.savannah.gnu.org"
+HostAliases="arch.sv.gnu.org arch.sv.nongnu.org arch.savannah.gnu.org arch.savannah.nongnu.org arch.gnu.org"
+LogFile="/var/log/apache2/arch/access.log"
+DirData="/var/lib/awstats/arch/"
+EOF
+
+chmod g+s /var/lib/awstats
+mkdir /var/lib/awstats/arch
+# ...
+
+cat <<EOF > /var/www/arch/awstats.pl
+#!/bin/sh
+export AWSTATS_FORCE_CONFIG=arch
+exec /usr/lib/cgi-bin/awstats.pl
+EOF
+chmod 755 /var/www/arch/awstats.pl
+
+# Apache:
+#ScriptAlias /awstats.pl /var/www/arch/awstats.pl
+cp /usr/share/doc/awstats/examples/apache.conf /etc/apache2/conf.d/awstats.conf
+sed -i -e 's/^ScriptAlias/#&/' /etc/apache2/conf.d/awstats.conf
+
+
+# Replace default mono-log awstats cron
+cat <<'EOF' > /etc/cron.d/awstats
+0 * * * *       root    /usr/share/doc/awstats/examples/awstats_updateall.pl now -awstatsprog=/usr/lib/cgi-bin/awstats.pl >/dev/null
+EOF
+# Or, for mono-sites: fix www-data -> root (or fix /var/lib/awstats permissions) and s/apache/apache2/
+
+# Import:
+name=arch; rm -f /var/lib/awstats/$name/*; (cd /var/log/apache2/$name/; (ls -rt access*.gz && ls -rt access.log.1 access.log) | while read log; do echo; echo "* Processing $log"; rm -f /tmp/log; zcat -f $log > /tmp/log; /usr/lib/cgi-bin/awstats.pl -config=$name -LogFile=/tmp/log -update; done)

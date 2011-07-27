@@ -1,0 +1,9 @@
+This directory contains aliases for @savannah.gnu.org, which mainly
+allow us to define a set of valid senders on the GNU mail system
+(since Savannah doesn't receive any mail directly). E.g.:
+www-data@savannah.gnu.org, INVALID.NOREPLY@savannah.gnu.org,
+libcrsync@savannah.gnu.org, ...
+
+The 'aliases' file is fetched from the GNU mail system via rsync.
+
+The cron job runs every hour at one minute after the hour.

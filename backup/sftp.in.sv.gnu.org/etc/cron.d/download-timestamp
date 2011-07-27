@@ -1,0 +1,1 @@
+*/15 * * * *	root	(LANG=C; date +\%s; date -u) > /srv/download/00_TIME.txt

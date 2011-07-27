@@ -1,0 +1,91 @@
+<VirtualHost 10.1.0.103:80>
+ServerName savannah-test.gnu.org
+
+SetEnv SV_LOCAL_INC_PREFIX /etc/savane/test-conf
+
+# Savane
+
+DocumentRoot /var/www/savane-test/frontend/php
+
+<Directory "/var/www/savane-test/frontend/php/">
+  # PHP conf
+  php_admin_flag register_globals off
+  php_admin_flag magic_quotes_gpc off
+  php_admin_flag file_uploads on
+
+  php_admin_flag allow_url_fopen off
+  php_admin_flag display_errors on
+  php_admin_flag log_errors on
+  # Set error_reporting=E_ALL|E_NOTICE:
+  php_value error_reporting 8191
+  php_admin_value disable_functions exec,passthru,popen,shell_exec,system
+  php_admin_value sendmail_path /tmp/fakesendmail.sh
+
+  DirectoryIndex index.php index.html
+</Directory>
+
+<Files ~ "^(users|us|u|projects|pr|p|file)$">
+  SetHandler application/x-httpd-php
+</Files>
+ErrorDocument 404 /404.php
+
+# Restrict access into include/
+<Directory /var/www/frontend-test/php/include>
+  Order Allow,Deny
+  Deny from all
+</Directory>
+
+# Tracker export
+Alias /export /var/cache/savane/
+<Directory "/var/cache/savane/">
+  Options Indexes FollowSymLinks
+  AllowOverride None
+  <IfModule mod_php4.c>
+    php_flag engine off
+  </IfModule>
+</Directory>
+
+
+Alias /icons /usr/share/apache/icons
+
+# Services that moved or disappeared
+Redirect /cgi-bin/viewcvs http://cvs.savannah.gnu.org/viewcvs
+Redirect /download http://download.savannah.gnu.org/releases
+<Location /cvs-backup>
+	# The last arg is an _URL_
+	ErrorDocument 404 /rsync-access.html
+</Location>
+
+
+# Post 2003 compromise announcements
+# Referenced in news items
+Alias /statements /var/www/statements
+<Directory /var/www/statements>
+  Options Indexes
+</Directory>
+
+
+# Info about TLS/SSL certificates
+Alias /tls /var/www/tls
+<Directory /var/www/tls>
+  AddType text/html .shtml
+  AddHandler server-parsed .shtml
+  Options IncludesNOEXEC
+</Directory>
+
+
+# Zope (and ZWiki)
+<IfModule mod_proxy.c>
+  ProxyPass /misc_ http://localhost:9673/misc_
+  ProxyPass /p_ http://localhost:9673/p_
+
+  ProxyPass /ZopeAdmin http://localhost:9673
+  ProxyPassReverse /ZopeAdmin http://localhost:9673
+
+  ProxyPass /maintenance http://localhost:9673/maintenance
+  ProxyPassReverse /maintenance http://localhost:9673/maintenance
+
+  RedirectMatch (/manage.*) https://savannah.gnu.org/ZopeAdmin$1
+  RedirectMatch (/zope_.*) https://savannah.gnu.org/ZopeAdmin$1
+</IfModule>
+</VirtualHost>

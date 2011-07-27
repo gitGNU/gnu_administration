@@ -1,0 +1,36 @@
+#!/bin/bash
+# Fake Mailman list creation. Adapt the parameters and SSH to lists.gnu.org
+
+USAGE="Usage: $0 [-q] full_list_name admin_mail password"
+
+TEMP=`getopt --options q --unquote --name $0 -- $*`
+if [ $? != 0 ]
+    then
+    echo $USAGE
+    exit 2
+fi
+eval set -- "$TEMP"
+
+for i in $*
+  do
+  case $i in
+      -q) shift;;
+      --) shift; break;;
+  esac
+done
+
+list_full_name=$1
+admin_mail=$2
+password=$3
+
+if [ -z "$list_full_name" -o -z "$admin_mail" -o -z "$password" ]; then
+    echo $USAGE
+    exit 2
+fi
+
+cat <<EOF | ssh -T -i ~/.ssh/id_dsa.lists.gnu.org list@lists.gnu.org
+COMMAND=newlist
+LIST_FULL_NAME=$list_full_name
+ADMIN_MAIL=$admin_mail
+PASSWORD=$password
+EOF

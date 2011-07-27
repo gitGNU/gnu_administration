@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Install an "update" hook that does two things:
+# - prohibit push of merge commit to "master"
+# - prohibit push of any commit that adds "bad" whitespace
+
+ME=$(basename "$0")
+warn() { printf '%s: %s\n' "$ME" "$*" >&2; }
+
+fail=0
+for proj in "$@"; do
+  dir=/vservers/vcs-noshell/srv/git/$proj.git
+  hooks=$dir/hooks
+  test -d $hooks || { warn "not a git project name: $proj"; fail=1; }
+
+  chattr -i $hooks && ln -sf --backup /usr/local/bin/git-update-hook \
+      $hooks/update
+  chattr +i $hooks
+  git --git-dir=$dir config hooks.denymerge.master true
+done
+exit $fail

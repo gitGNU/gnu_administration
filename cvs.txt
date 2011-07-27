@@ -1,0 +1,222 @@
+# Services
+# - cron
+# - sysklogd
+# - ssh
+# - rsync
+# - apache2 (viewvc)
+
+
+# Compilation
+# file: builder:/usr/src/patched/ccvs/patches/
+
+# Currently built from source + patches: 1 from Debian to fix
+# compression bug, 2 backports for from unreleased CVS 1.12.14, 1
+# Savannah-specific patch to disable CVSROOT/passwd processing
+# entirely (used when experimenting with Doctor), one small patch for
+# autopackage compilation
+
+# CVS 1.12.13 hasn't been updated between 2007 and 2009, Debian
+# introduced a few patches that aren't useful for us. No update to do
+# when switching to Debian Lenny.
+
+# untar cvs-1.12.13
+apt-get install quilt libpam0g-dev
+cd /usr/src/patched/ccvs/
+quilt push -a
+make -C autopackage/
+makepackage
+package install Concurr*.package
+# => doesn't work since Lenny, 'undefined reference...'
+# or
+apt-get install bzip libglib2.0-0
+sh Concurr*.package
+# => doesn't work either since ?, tar error...
+# or
+./configure --prefix=/usr --sysconfdir=/etc --without-krb4 --without-gssapi \
+    --with-external-zlib --enable-pam
+make
+make install DESTDIR=`pwd`/DESTDIR
+
+
+# Enable UserAdminOptions
+# root@sv_accounts:/# groupadd cvsadmin
+
+apt-get install xinetd
+
+mkdir -m 755 /sources /web
+ln -s sources /cvsroot
+ln -s web /webcvs
+mkdir -m 755 /srv/cvs
+ln -s ../../sources /srv/cvs/sources
+ln -s ../../web /srv/cvs/web
+mkdir -m 1777 /var/lock/cvs
+# /etc/vservers/vcs-noshell/fstab
+#none    /tmp            tmpfs   size=1g,nr_inodes=512k,mode=1777        0 0
+#none    /var/lock/cvs   tmpfs   size=1g,mode=1777       0 0
+
+## Fake CVS for Debian
+apt-get install equivs
+cd /usr/src
+equivs-control cvs-equivs
+cat <<EOF > cvs-equivs
+Package: cvs
+Version: 1:1.12.13-99
+Maintainer: Savannah Hackers <savannah-hackers@gnu.org>
+Description: Empty/fake package to trick git-cvs dependency
+EOF
+equivs-build cvs-equivs
+
+cat <<'EOF' > /etc/xinetd.d/pserver
+service cvspserver
+{
+        disable         = no
+        socket_type     = stream
+        protocol        = tcp
+        wait            = no
+        user            = nobody
+        env             = PATH=/bin:/usr/bin:/usr/local/bin
+        passenv         = PATH
+        bind            = 199.232.41.69
+        server          = /usr/bin/cvs
+        server_args     = -f --allow-root-regexp=^/srv/cvs/sources/[^/]+$ --allow-root-regexp=^/srv/cvs/web/[^/]+$ --allow-root-regexp=^/sources/[^/]+$ --allow-root-regexp=^/web/[^/]+$ --allow-root-regexp=^/cvsroot/[^/]+$ --allow-root-regexp=^/webcvs/[^/]+$ pserver
+}
+EOF
+
+# file: /etc/init.d/cvs_permissions
+# file: /etc/init.d/cvs_lockdirs
+update-rc.d cvs_permissions defaults
+update-rc.d cvs_lockdirs defaults
+
+
+apt-get install openssh-server
+
+# Edit /etc/ssh/sshd_config; look at the end of the file
+invoke-rc.d ssh start
+
+# Needed by ssh
+MAKEDEV pty
+
+
+apt-get install rsync
+cat <<'EOF' > /etc/rsyncd.conf
+use chroot = no
+
+[sources]
+        comment = CVS source repositories
+        path = /sources
+[web]
+        comment = Websites managed via CVS
+        path = /web
+[svn]
+        comment = SVN source repositories
+        path = /srv/svn
+EOF
+
+# For private projects -> rsync daemon over SSH
+# Configuring /etc/membersh-conf.pl is enough:
+#$allowed_paths = "(/srv/cvs|/sources|/web)";
+#$use_rsync = '1';
+#$regexp_rsync = '^rsync --server --sender ';
+#$regexp_dir_rsync = "^$allowed_paths";
+
+# If you're paranoid you can run rsync as a 'nobody' daemon directly:
+#sed -i -e "s/^RSYNC_ENABLE=.*/RSYNC_ENABLE=true/" /etc/default/rsync
+#sed -i -e "s/^RSYNC_OPTS=.*/RSYNC_OPTS='--address=199.232.41.69'/" /etc/default/rsync
+# Edit /etc/init.d/rsync:
+#   start-stop-daemon...
+#     --chuid nobody: \
+# Some NATing is then needed:
+# allow port 2873 in INPUT -t filter (allowing port 873 is not needed):
+# -A state_check -p tcp -m tcp --dst 199.232.41.69 --dport 2873 -j ACCEPT
+# in -t nat, redirect external traffic:
+# -A PREROUTING -d 199.232.41.69 -p tcp -m tcp --dport 873 -j DNAT --to-destination 199.232.41.69:2873
+# also redirect internal traffic, just in case:
+# -A OUTPUT     -d 199.232.41.69 -p tcp -m tcp --dport 873 -j DNAT --to-destination 199.232.41.69:2873
+
+# Or just run it through xined, still as nobody:
+sed -i -e "s/^RSYNC_ENABLE=.*/RSYNC_ENABLE=inetd/" /etc/default/rsync
+# functions/rsync-anonymous.txt
+
+# Migration:
+# rm all /sources/* and /web/* _symlinks_
+# umount /savannah/cvsroot
+# for each group
+# chmod 2775 $repo_dir (eg /sources/testyten)
+# OR chmod 2770 FOR PRIVATE PROJECTS
+# => chmod -t,g+s,o-w -R .
+# => chmod 755 -R CVSROOT
+# => chattr +i CVSROOT
+# chgrp $group .
+# later: chown -R root *_but_CVSROOT
+
+# Security discussion: we want to
+# - avoid a local user to mv CVSROOT and replace it with its own (security, could install its own hooks without the other members knowing about it)
+#   * either chmod +t the repository root directory This prevents a project member from removing ('cvs rm' -> Attic/) another project member's file. This happened a few times, but usually people only create directories (aka CVS modules) in the repository root directory.
+#   * either prevent any write access to the repository root directory, plus a Savane web interface to add new CVS modules
+#   * either (chmod 2775 . chattr +i CVSROOT); you need, though, to (chmod g-w / && chattr +i CVSROOT) when adding files or using RCS in CVSROOT. You also need to use ext2 or ext3 for the filesystem. Since updating the CVS repository can be done by simply overwriting files such as loginfo (instead of using RCS on them), this solution is viable. Just don't forget to lock top directory write access before to chattr -i when needed. And to unlock it after chattr +i, of course ;)
+# - avoid user local access, mainly to avoid data corruption:
+#   * avoid creation of new CVSROOT down the repository (which would be valid, there's no --allow-root for 'cvs server', unfortunately). Since users have enough write access to do this, any form of write access (sftp...) on the CVS repository is proscribed.
+#   * of course this implies preventing any write access in CVSROOT (can be done for ,v files there)
+
+
+# Later:
+# change CVSROOT/config with LockDir=/var/lock/cvs/_PROJNAME_
+#  (this requires a start-up script, and the project creation script,
+#  to create all those directories, since /var/lock/cvs/ is tmpfs)
+#  Plus some other additional security tightening, among others wrt
+#   Debian's PamAuth and 'cvs admin' - check config in testyeight
+# Plus echo "anonymous::nobody" > passwd
+#      echo "anoncvs::nobody" >> passwd
+#      echo "anonymous" > readers
+#      echo "anoncvs" >> readers
+#      echo -n > writers
+#      rm *,v # ?
+# Do not modify checkoutlist - it's not to provide error messages (eg. http://cvs.gna.org/cvsweb/CVSROOT/checkoutlist?rev=1.2;cvsroot=admin), but to _add_ new administrative files.
+
+
+# Install Savane
+sh savane.sh
+apt-get install curl
+
+
+apt-get install apache2-mpm-worker
+apt-get install viewcvs
+# Included in Lenny:
+#sed -i 's|NO_START=1|NO_START=0|' /etc/default/apache2
+#sed -i 's/IndexOptions FancyIndexing VersionSort/IndexOptions FancyIndexing VersionSort NameWidth=*/' /etc/apache2/apache2.conf
+sed -i 's/Listen 80/Listen 199.232.41.69:80/' > /etc/apache2/ports.conf
+ 
+# ViewCVS:
+# Don't enable mod_python mode, it's less stable (less likely to be
+# killed than a CGI when running wild) and less maintained
+
+
+cd /var/www/off-site/viewvc-1.0.7
+apt-get install python
+./viewvc-install
+# install path: /var/www/off-site/viewvc
+# file: /var/www/off-site/viewvc/templates/include/header.ezt
+# file: /var/www/off-site/viewvc/viewvc.conf
+# ViewVC eats up all memory in some occasions...
+(echo "User-agent: *"; echo "Disallow: /viewvc/") > /var/www/cvs/robots.txt
+
+
+===============================
+Add a cvs hook to disable commits in YOUR_PROJECT.
+Do the following from within the cvs vserver:
+
+nc=no-commits
+proj=YOUR_PROJECT
+d=/cvsroot/$proj
+cd $d/CVSROOT && chattr -i .
+
+cat <<\EOF > $nc
+#!/bin/sh
+echo 1>&2 'You may not commit here anymore.  Use git:'
+echo 1>&2 'http://git.sv.gnu.org/gitweb/?p=$proj.git'
+exit 1
+EOF
+chmod a+x $nc
+
+echo '^'"$proj"'\(/\|$\) $CVSROOT/CVSROOT/'$nc' %{s}' >> commitinfo
+chattr +i .

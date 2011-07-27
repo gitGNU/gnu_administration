@@ -1,0 +1,38 @@
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:
+MAILTO=savannah-reports-private@gnu.org
+
+# Format reminder:
+# m h dom mon dow	user	command
+
+
+# Assign uidNumber and gidNumber inthe database (and rebuild cache for
+# libnss-mysql-bg). 7211 was the latest group created by the old
+# sv_groups cron - maybe one day we'll move everything to the 70000
+# range. Then create homedirs and authorized_keys files.
+#*/5 * * * *   root   sv_assign_uid_gid --min-gidNumber=77212 && sv_homedirs && sv_authorized_keys
+*/5 * * * *   root   sv_assign_uid_gid --min-gidNumber=77212
+
+
+################################################ MAIL RELATED
+# Commented, since there is no mail service at savannah
+#
+# List of mail-/etc/aliases must be rebuild regularly 
+#*/10 * * * *	root	sv_aliases --cron
+# This, plus create a file full of INVALID.NOREPLY@gnu.org to override the sender (and avoid SRS- or SPF- issues)
+*/10 * * * *	root	sv_aliases --cron && sed -e '/# Savannah include start/,/# Savannah include end/s/\([^:]\+\): .*/\1: INVALID.NOREPLY@gnu.org/' /etc/email-addresses -e 's,This is /etc/email-addresses,DO NOT EDIT - GENERATED FROM email-addresses.,' > /etc/email-addresses_SENDER
+
+# New list creation
+*/30 * * * *	root	sv_mailman --cron
+#5 * * * *	list	sv_mailman_checkqueue --cron
+
+################################################ DATABASE RELATED
+#
+# This script does not need root access, access to the database is enough
+# 
+# Database cleaning
+*/25 * * * *	root    sv_cleaner --cron
+48 12 2 * *     root    sv_cleaner --cron --big-cleanup
+
+# Reminder
+4 4 * * *	root    sv_reminder --cron
+25 18 * * *	root    sv_reminder --cron

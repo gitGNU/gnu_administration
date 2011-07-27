@@ -1,0 +1,33 @@
+#!/bin/bash
+# Fake Mailman password change. Adapt the parameters and SSH to lists.gnu.org
+
+USAGE="Usage: $0 [-a] list_name"
+
+TEMP=`getopt --options a --unquote --name $0 -- $*`
+if [ $? != 0 ]
+    then
+    echo $USAGE
+    exit 2
+fi
+eval set -- "$TEMP"
+
+for i in $*
+  do
+  case $i in
+      -a) shift;;
+      --) shift; break;;
+  esac
+done
+
+list_name=$1
+
+if [ -z "$list_name" ]; then
+    echo "Missing list_name."
+    echo $USAGE
+    exit 2
+fi
+
+cat <<EOF | ssh -T -i ~/.ssh/id_dsa.lists.gnu.org list@lists.gnu.org
+COMMAND=rmlist
+LIST_NAME=$list_name
+EOF

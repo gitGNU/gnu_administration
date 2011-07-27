@@ -1,0 +1,2 @@
+Install gpg!
+groupadd cvsadmin # required for UserAdminOptions to work

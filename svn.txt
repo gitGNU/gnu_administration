@@ -1,0 +1,82 @@
+apt-get install subversion
+cat <<'EOF' > /etc/xinetd.d/svn
+service svn
+{
+        port                    = 3690
+        socket_type             = stream
+        protocol                = tcp
+        wait                    = no
+        user                    = nobody
+        server                  = /usr/bin/svnserve
+        server_args             = -i -r /srv/svn/
+}
+EOF
+mkdir /srv/svn
+
+project=administration
+cd /srv/svn
+svnadmin create --fs-type=fsfs $project/
+chgrp $project -R $project/db
+chmod -R g+w $project/db
+
+# temp fix: UPDATE groups SET use_svn=1 WHERE unix_group_name='scleaner';
+
+cat <<'EOF' >> /etc/membersh-conf.pl
+$use_svn = "1";
+our @prepend_args_svn = ('-r', '/srv/svn');
+EOF
+
+# Apache
+apt-get install libapache2-svn
+# Note: module exists only for Apache2
+#file: /etc/apache2/sites-available/svn
+
+# ViewCVS
+# Configure [vhosts]:
+# file: /etc/viewcvs/viewcvs.conf
+# Install the 'svn' Python module:
+apt-get install python-subversion
+# Note: *not* python-svn
+
+
+# E-mail commits:
+apt-get install libsvn-notify-perl  # svnnotify
+
+project=myproject
+pushd /srv/svn
+cat <<'EOF' > $project/hooks/post-commit
+#!/bin/bash
+
+REPOS="$1"
+REV="$2"
+# eg: REPOS=/srv/svn/testyeight REV=5
+
+run-parts --arg=$REPOS --arg=$REV $REPOS/hooks/post-commit.d
+EOF
+
+chmod 755 $project/hooks/post-commit
+mkdir -m 755 $project/hooks/post-commit.d
+cat <<'EOF' > $project/hooks/post-commit.d/sv_svn-notify
+#!/bin/bash
+REPOS="$1"
+REV="$2"
+PROJECT=`basename $1`
+MAIL=THE_PROJECT_ML@nongnu.org
+
+# ticket-map: check frontend/php/include/markup.php:_markup_inline()
+# support #123, sr#123, bug #123, bugs#123, task  #123, tasks#123, patch#123...
+
+# max-diff-length to 150k, to avoid the lists.gnu.org limit of
+# 200k/mail (think 2MB * 500 subscribers = 1GB!)
+
+svnnotify --repos-path "$REPOS" --revision "$REV" \
+  --with-diff --revision-url "http://svn.sv.gnu.org/viewvc/?view=rev&root=$PROJECT&revision=%s" \
+  --ticket-map '\bbugs?\s{0,2}#([0-9]+)=http://savannah.gnu.org/bugs/?%s' \
+  --ticket-map '\b(?:sr|support)\s{0,2}#([0-9]+)=http://savannah.gnu.org/support/?%s' \
+  --ticket-map '\btasks?\s{0,2}#([0-9]+)=http://savannah.gnu.org/task/?%s' \
+  --ticket-map '\bpatch?\s{0,2}#([0-9]+)=http://savannah.gnu.org/patch/?%s' \
+  --max-diff-length 153600 \
+  --to $MAIL
+EOF
+chmod 755 $project/hooks/post-commit.d/sv_svn-notify
+popd

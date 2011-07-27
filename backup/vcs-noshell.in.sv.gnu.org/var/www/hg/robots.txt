@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /hgweb/
+
+# Apparently 'hgweb' eats 100% CPU in some situations. Better keep
+# search engines away - though pages are already declared "nofollow"
+# by hgweb.

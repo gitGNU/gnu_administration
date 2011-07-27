@@ -1,0 +1,7 @@
+cd /usr/local/bin/
+wget http://cia.vc/clients/cvs/ciabot_cvs_1.12.pl
+chmod 755 ciabot_cvs_1.12.pl
+sed -i -e 's/$xml_rpc = 0;/$xml_rpc = 1;/' ciabot_cvs_1.12.pl
+
+INSERT INTO cvs_hooks (group_id, match_type, hook_name) VALUES (30, 'ALL', 'cia');
+INSERT INTO cvs_hooks_cia (hook_id, project_account) VALUES (LAST_INSERT_ID(), 'hurd');

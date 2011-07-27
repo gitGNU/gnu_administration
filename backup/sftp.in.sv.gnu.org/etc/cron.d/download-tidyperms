@@ -1,0 +1,10 @@
+# Make sure everything is world-readable in the download area
+
+# The mirrors relies on it
+
+# Not fixing permissions can also lead to situations where a project
+# member can't modify files uploaded by another member.
+
+# Note: make sure you avoid symlinks, especially those that point to
+# /etc/shadow...
+30 * * * *	root	cd /srv/download && (find -type d -print0 | xargs -r -0 chmod 2775) && (find -type f -print0 | xargs -r -0 chmod 664)

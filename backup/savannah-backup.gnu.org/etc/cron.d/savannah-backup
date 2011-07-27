@@ -1,0 +1,2 @@
+MAILTO=savannah-reports-private@gnu.org
+0 12 * * *	root	/mnt/backup/backup.sh

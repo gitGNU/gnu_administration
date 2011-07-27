@@ -1,0 +1,130 @@
+#!/usr/bin/perl
+#
+#     SQL Injection Log Monitor
+#     Copyright (C) 2010 - Michael J. Flickinger
+#     Copyright (C) 2011 - Sylvain Beucler
+
+#     This program is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+
+#     This program is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+
+#     You should have received a copy of the GNU General Public License
+#     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+# Configuration
+my $config = {
+    emails     => ['savannah-reports-private@gnu.org'],
+    log_file   => '/var/log/apache2/access.log',
+    email_from => 'SQL Injection Log Monitor <nobody@colonialone.fsf.org>',
+    subject    => 'Possible SQL Injection Attack',
+};
+
+###########################################################################
+
+use File::Tail;
+use URI::Escape;
+my $message_body = undef;
+my $last_time = time();
+
+# this should run as a forked process, so check if this is already running
+
+sub is_running { grep { /sql_injection_monitor \[running\]/ } grep { !/grep/ } `ps aux` }
+
+sub fatal_error { die "fatal error: $_[0]\n" }
+
+sub main
+{
+    die "sql_injection_monitor is already running\n" if &is_running;
+
+    if (fork())
+    {
+	print "Started sql_injection_monitor.\n";
+	exit(0);
+    }
+
+    # this is a little evil
+    # commenting out because it makes 'killall' uneasy
+    #$0 = 'sql_injection_monitor [running]';
+
+    my $log_file = $config->{log_file};
+
+    return &fatal_error("Log file: '$log_file' does not exist.")
+        unless -e $log_file;
+
+    &monitor_file($log_file);
+}
+
+sub monitor_file
+{
+    my $file = shift;
+
+    my $ft = File::Tail->new(
+        name => $file,
+        maxinterval => 30,
+	);
+    while (defined(my $line = $ft->read)) {
+        &validate($line);
+    }
+}
+
+sub validate
+{
+    my $line = shift;
+    # add readability to input
+    $line = uri_unescape($line);
+
+    if (
+        (
+         $line =~ /union/i or
+         $line =~ /from/i
+        ) 
+	and
+	(
+          $line =~ /select/i and
+          $line =~ /\(|\)/i
+	)
+    )
+    {
+	$message_body .= $line;
+	$last_time = time();
+    }
+    # Group e-mails instead of sending out one mail per attacker request
+    if ((time() - $last_time) > 60 and defined($message_body))
+    {
+	&mail({
+	    body    => "Possible SQL injection attack with the following apache access_log entry:\n\n"
+		. $message_body,
+	    from    => $config->{email_from},
+	    to      => join(', ', @{$config->{emails}}),
+	    subject => $config->{subject},
+	      });
+	undef($message_body);
+    }
+}
+
+sub mail
+{
+    my $message = shift;
+
+    open MAIL, '|/usr/lib/sendmail -i -t' or die 'Cannot open sendmail.';
+
+    print MAIL "To: $message->{to}\n";
+    print MAIL "From: $message->{from}\n";
+    print MAIL "Subject: $message->{subject}\n";
+    print MAIL "\n";
+    print MAIL $message->{body};
+    close(MAIL);
+}
+
+&main();
+
+# Local Variables:
+# compile-command: "perl -cw sql_injection_monitor"
+# End:

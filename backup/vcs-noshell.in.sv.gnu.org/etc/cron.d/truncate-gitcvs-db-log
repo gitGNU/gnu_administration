@@ -1,0 +1,2 @@
+MAILTO=savannah-reports-private@gnu.org
+0 3 9 * * nobody : > /srv/git/gnulib.git/gitcvs-db/log

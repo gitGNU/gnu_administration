@@ -1,0 +1,48 @@
+List of hard-coded IP adresses references:
+
+
+140.186.70.70 => frontend.savannah.gnu.org (savannah.gnu.org)
+140.186.70.71 => frontend.savannah.gnu.org (savannah.nongnu.org)
+140.186.70.72 => vcs.savannah.gnu.org (vcs-noshell)
+140.186.70.73 => download.savannah.gnu.org (sftp)
+140.186.70.74 => mgs.savannah.gnu.org (management vm)
+140.186.70.75 => internal.savannah.gnu.org 
+140.186.70.76 => vpn.savannah.gnu.org (vpn)
+
+host:
+- /etc/snmp/snmpd.conf # grant access to cacti
+- /etc/munin/munin-node.conf # grant access to munin
+- And, naturally, /etc/network/firewall.sh
+
+frontend:
+- /etc/apache2/ports.conf
+- /etc/apache2/sites-available/
+- Zope's /MailHost object
+
+vcs-noshell:
+- /etc/xinetd.d/cvspserver
+- /etc/xinetd.d/git-cvspserver
+
+internal:
+- /etc/munin/munin.conf # connect to vserver host
+
+builder:
+- /etc/pbuilderrc # apt proxy
+
+sftp:
+- /srv/bzr/**/.bzr/branch/branch.conf # bzr commit notification requires an explicit SMTP server
+
+all:
+- /etc/savane/savane.conf.pl # database
+- /etc/savane/.savane.conf.php # database
+- /etc/savane/savane.ini # database
+- /etc/exim4/update-exim4.conf.conf # smarthost
+- /etc/apt/sources.list # apt proxy
+- /etc/libnss-mysql.cfg # passwd/shadow/group from MySQL
+
+nadesico:
+- http://www.gnu.org/new-savannah-project/new.py  # IP access list
+
+mail system:
+- white-listing so that big diff messages are ignored (rather than
+  bounced)

@@ -1,0 +1,30 @@
+The VServer model is: one firewall for everybody (no per-vserver
+firewall).
+
+So there's a centralised configuration for the firewall. It's located
+in /etc/network/firewall.sh, and is called through a pre-up entry in
+/etc/network/interfaces. It's just a shell script that uses the
+'iptables' command repeatedly.
+
+
+The firewall rejects everything directly, with --with-tcp-reset to be
+more efficient, instead of DROPing packets. I like being able to nmap
+Savannah and see at once what ports are opened and which one ought to
+be closed. This also makes testing more efficient. The RSH port is
+rejected with a special irrelevant "protocol not available" error
+message, which allows an immediate diagnostic when somebody forgot to
+'export CVS_RSH=ssh' ;)
+
+Internal VServer with IP adresses within 10.0.0.0/24 get some SNAT to
+be able to access the Internet.
+
+
+There are some outgoing rules as well; they are not meant for
+filtering (the default policy is ACCEPT), but they provide accounting,
+so a 'iptables -vL' can tell you how much traffic was delivered per
+service when since the last iptables restart.
+
+
+To update the firewall, you essentially edit /etc/network/firewall.sh,
+pray, and run it directly. In case of troubles, ask an admin with
+serial access to log as root2 and fix the firewall.

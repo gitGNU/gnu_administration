@@ -1,0 +1,4 @@
+# Mount filesystems with noatime, e.g.:
+#/dev/sda2     /     ext3     errors=remount-ro,noatime   0     1
+
+# This reduces the write load on disks to some extent.

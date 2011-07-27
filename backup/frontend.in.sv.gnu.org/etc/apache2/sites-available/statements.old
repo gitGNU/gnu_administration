@@ -1,0 +1,85 @@
+############################################
+#
+#  Temporary statement code begins here:
+#  Uncomment the <IfDefine> statements to remove it
+#  and see section below.
+#
+############################################
+
+#<IfDefine NOT_DEFINED>
+#
+#<VirtualHost 199.232.41.3:80>
+#  ServerName savannah.gnu.org
+#  DocumentRoot /statements
+#
+#  RewriteEngine on
+#  RewriteCond %{REQUEST_URI} !/statement.html
+#  RewriteCond %{REQUEST_URI} !/statement-2.html
+#  RewriteCond %{REQUEST_URI} !/statement-2.text
+#  RewriteCond %{REQUEST_URI} !/statement-3.text
+#  RewriteCond %{REQUEST_URI} !/statement-4.text
+#  RewriteCond %{REQUEST_URI} !/statement-5.text
+#  RewriteCond %{REQUEST_URI} !/statement-original.html
+#  RewriteCond %{REQUEST_URI} !/statement.text
+#  RewriteRule .* http://savannah.gnu.org/statement.html [R]
+#</VirtualHost>
+#
+#<VirtualHost 199.232.41.4:80>
+#  ServerName savannah.nongnu.org
+#  DocumentRoot /statements
+#
+#  RewriteEngine on
+#  RewriteCond %{REQUEST_URI} !/statement.html
+#  RewriteCond %{REQUEST_URI} !/statement-2.html
+#  RewriteCond %{REQUEST_URI} !/statement-2.text
+#  RewriteCond %{REQUEST_URI} !/statement-3.text
+#  RewriteCond %{REQUEST_URI} !/statement-4.text
+#  RewriteCond %{REQUEST_URI} !/statement-5.text
+#  RewriteCond %{REQUEST_URI} !/statement-original.html
+#  RewriteCond %{REQUEST_URI} !/statement.text
+#  RewriteRule .* http://savannah.gnu.org/statement.html [R]
+#</VirtualHost>
+#
+#
+#<VirtualHost 199.232.41.3:443>
+#  ServerName savannah.gnu.org
+#  DocumentRoot /statements
+#
+#  SSLEngine on
+#  SSLCertificateFile    /etc/apache/ssl.crt/savannah_gnu.crt
+#  SSLCertificateKeyFile /etc/apache/ssl.key/savannah_gnu.key
+#
+#  RewriteEngine on
+#  RewriteCond %{REQUEST_URI} !/statement.html
+#  RewriteCond %{REQUEST_URI} !/statement-2.html
+#  RewriteCond %{REQUEST_URI} !/statement-2.text
+#  RewriteCond %{REQUEST_URI} !/statement-3.text
+#  RewriteCond %{REQUEST_URI} !/statement-4.text
+#  RewriteCond %{REQUEST_URI} !/statement-5.text
+#  RewriteCond %{REQUEST_URI} !/statement-original.html
+#  RewriteCond %{REQUEST_URI} !/statement.text
+#  RewriteRule .* http://savannah.gnu.org/statement.html [R]
+#</VirtualHost>
+#
+#<VirtualHost 199.232.41.4:443>
+#  ServerName savannah.nongnu.org
+#  DocumentRoot /statements
+#
+#  SSLEngine on
+#  SSLCertificateFile    /etc/apache/ssl.crt/savannah_nongnu.crt
+#  SSLCertificateKeyFile /etc/apache/ssl.key/savannah_nongnu.key
+#
+#  RewriteEngine on
+#  RewriteCond %{REQUEST_URI} !/statement.html
+#  RewriteCond %{REQUEST_URI} !/statement-2.html
+#  RewriteCond %{REQUEST_URI} !/statement-2.text
+#  RewriteCond %{REQUEST_URI} !/statement-3.text
+#  RewriteCond %{REQUEST_URI} !/statement-4.text
+#  RewriteCond %{REQUEST_URI} !/statement-5.text
+#  RewriteCond %{REQUEST_URI} !/statement-original.html
+#  RewriteCond %{REQUEST_URI} !/statement.text
+#  RewriteRule .* http://savannah.gnu.org/statement.html [R]
+#</VirtualHost>
+#
+#
+#</IfDefine>

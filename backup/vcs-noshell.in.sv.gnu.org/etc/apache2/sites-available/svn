@@ -1,0 +1,35 @@
+<VirtualHost *:80>
+  ServerName svn.savannah.gnu.org
+  # When redirecting, SVN requires the user to relocate his repo >(
+  #svn: Repository moved permanently to 'http://svn.savannah.gnu.org/svn/project/modulename'; please relocate
+  #Redirect permanent / http://svn.savannah.gnu.org/
+  # So using the crawling trick below instead
+  ServerAlias svn.sv.gnu.org
+  ServerAlias svn.sv.nongnu.org
+  ServerAlias svn.savannah.nongnu.org
+
+  DocumentRoot /var/www/svn/
+  ScriptAlias /awstats.pl /var/www/svn/awstats.pl
+
+  <Location "/svn/">
+    DAV svn
+    SVNParentPath /srv/svn/
+    <LimitExcept GET PROPFIND OPTIONS REPORT>
+      Require valid-user
+    </LimitExcept> 
+  </Location>
+
+  Include sites-available/viewvc.inc
+
+  # Redirect to a single canonical URL when being crawled, to avoid
+  # multiple crawls (e.g. one single crawl instead of one crawl per
+  # domain alias)
+  RewriteEngine on
+  RewriteCond %{ENV:is_a_robot}        1
+  RewriteCond %{HTTP_HOST} !^svn\.savannah\.gnu\.org$
+  RewriteRule ^(.*) http://svn.savannah.gnu.org$1 [redirect=permanent,last]
+
+  LogLevel warn
+  CustomLog /var/log/apache2/svn/access.log combined
+  ErrorLog /var/log/apache2/svn/error.log
+</VirtualHost>
