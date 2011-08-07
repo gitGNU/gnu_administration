@@ -1,6 +1,5 @@
 List of hard-coded IP adresses references:
 
-
 140.186.70.70 => frontend.savannah.gnu.org (savannah.gnu.org)
 140.186.70.71 => frontend.savannah.gnu.org (savannah.nongnu.org)
 140.186.70.72 => vcs.savannah.gnu.org (vcs-noshell)
