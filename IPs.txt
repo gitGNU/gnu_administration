@@ -25,7 +25,7 @@ vcs-noshell:
 internal:
 - /etc/munin/munin.conf # connect to vserver host
 
-builder:
+mgt:
 - /etc/pbuilderrc # apt proxy
 
 sftp:
