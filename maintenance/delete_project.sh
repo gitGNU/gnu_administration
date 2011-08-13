@@ -19,7 +19,7 @@ ssh root@vcs chattr -i /srv/cvs/sources/$group/CVSROOT
 rsync -aHS root@vcs:/srv/cvs/sources/$group/ $backup_dir/sources/
 ssh root@vcs rm -rf /srv/cvs/sources/$group/
 
-rsync -aHS root@vcs-noshell.in.sv.gnu.org:/srv/cvs/web/$group/ $backup_dir/web/
+rsync -aHS root@vcs:/srv/cvs/web/$group/ $backup_dir/web/
 # Empty the website - no need to ask sysadmin that way
 ssh root@vcs find /srv/cvs/web/$group/$group -type f -print0 \| xargs -0 --no-run-if-empty rm
 echo "No more there." | ssh root@vcs cat \> /srv/cvs/web/$group/$group/index.html
