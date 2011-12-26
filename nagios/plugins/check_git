@@ -3,7 +3,7 @@
 #
 PROGNAME=`basename $0`
 NAG_LEVEL="critical" # Default to critical
-TMP=`mktemp -d`
+TMP=`mktemp -d -u` # Show the directory that _would_ have been made, as older git doesn't clone into an existing folder
 FILE=""
 
 usage() {
