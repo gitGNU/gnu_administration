@@ -1,0 +1,100 @@
+#!/bin/bash
+# Nagios plugin for checking a git repo through the git:// protocol
+#
+PROGNAME=`basename $0`
+NAG_LEVEL="critical" # Default to critical
+TMP=`mktemp -d`
+FILE=""
+
+usage() {
+	echo "Usage:"
+	echo "	$PROGNAME -r <GIT_REPO> [-f FILE] [-w] [-c]"
+	echo "Manditory arguments:"
+	echo "	-r GIT_REPO served over the git:// procolcol"	
+	echo "     Example: -r git://git.kernel.org/linux.git"
+	echo "Optional Arguments:"
+	echo "	-f FILE that is expected to be in the Git repository"
+	echo "	-w On failure, error is warning"
+	echo "	-c On failure, error is critical"
+	echo ""
+	echo "Examples:"
+	echo "	$PROGNAME -r git://git.savannah.gnu.org:/srv/administration.git -f README -c"
+	exit 1
+}
+
+cleanup(){
+	rm -rf $TMP
+}
+
+nag_ok(){
+	TEXT=$1
+	echo "OK - $1"
+	exit 0 
+}
+
+nag_err(){
+	TEXT=$1
+	if [ "$NAG_LEVEL" == "warning" ]; then
+		echo "WARNING - $TEXT"
+		exit 1
+	elif [ "$NAG_LEVEL" == "critical" ]; then
+		echo "CRITICAL - $TEXT"
+		exit 2
+	else
+		echo "UNKNOWN - $TEXT"
+		exit 128
+			
+	fi
+}
+
+trap 'cleanup' 0 1 2 3 15
+
+while getopts "r:f:wch" opt
+do
+	case $opt in
+		r)
+			GIT_REPO=$OPTARG
+			;;
+		f)
+			FILE=$OPTARG
+			;;
+		w)
+			NAG_LEVEL="warning"
+			;;
+		c)
+			NAG_LEVEL="critical"
+			;;
+		h)
+			usage
+			;;
+		*)
+			echo "Unknown option - $opt" 1>&2
+			exit 1
+			;;
+	esac
+done
+
+# GIT_REPO is manditory
+test -z $GIT_REPO && usage
+
+
+# Try to clone the git repot
+GIT_TEXT=`git clone $GIT_REPO $TMP 2>&1`
+GIT_TEXT=`echo $GIT_TEXT | sed "s/\n/ /g"`
+if [ $? -ne 0 ]; then
+	# Something went wrong, print out the git text
+	nag_err "$GIT_TEXT"
+fi
+
+# Check if we are supposed to be looking for a file
+if [ -z $FILE ]; then
+	# Not looking for a file
+	nag_ok "$GIT_TEXT"
+fi
+
+# If we're here, we also need a file
+if [ -f $TMP/$FILE ]; then
+	nag_ok "$GIT_TEXT"
+else
+	nag_err "File $FILE not found! - $GIT_TEXT"
+fi
