@@ -1,0 +1,106 @@
+#!/bin/bash
+# Nagios plugin for checking a cvs repo through the cvs:// protocol
+#
+PROGNAME=`basename $0`
+NAG_LEVEL="critical" # Default to critical
+TMP=`mktemp -d` # Show the directory that _would_ have been made, as older cvs doesn't clone into an existing folder
+FILE=""
+CVS_MODULE="." # Default to everything
+
+usage() {
+	echo "Usage:"
+	echo "	$PROGNAME -r <CVS_REPO> [-m MODULE] [-f FILE] [-w] [-c]"
+	echo "Manditory arguments:"
+	echo "	-r CVS_REPO served over the cvs:// procolcol"	
+	echo "     Example: -r cvs://cvs.kernel.org/linux.cvs"
+	echo "Optional Arguments:"
+	echo "	-m MODULE path to be checked out"
+	echo "	-f FILE that is expected to be in the Git repository"
+	echo "	-w On failure, error is warning"
+	echo "	-c On failure, error is critical"
+	echo ""
+	echo "Examples:"
+	echo "	$PROGNAME -r anonymous@cvs.sv.gnu.org:/web/administration -f administration/README -c"
+	exit 1
+}
+
+cleanup(){
+	cd /tmp || exit 1
+	rm -rf $TMP
+}
+
+nag_ok(){
+	TEXT=$1
+	echo "OK - $1"
+	exit 0 
+}
+
+nag_err(){
+	TEXT=$1
+	if [ "$NAG_LEVEL" == "warning" ]; then
+		echo "WARNING - $TEXT"
+		exit 1
+	elif [ "$NAG_LEVEL" == "critical" ]; then
+		echo "CRITICAL - $TEXT"
+		exit 2
+	else
+		echo "UNKNOWN - $TEXT"
+		exit 128
+			
+	fi
+}
+
+trap 'cleanup' 0 1 2 3 15
+
+while getopts "r:m:f:wch" opt
+do
+	case $opt in
+		r)
+			CVS_REPO=$OPTARG
+			;;
+		m)
+			CVS_MODULE=$OPTARG
+			;;
+		f)
+			FILE=$OPTARG
+			;;
+		w)
+			NAG_LEVEL="warning"
+			;;
+		c)
+			NAG_LEVEL="critical"
+			;;
+		h)
+			usage
+			;;
+		*)
+			echo "Unknown option - $opt" 1>&2
+			exit 1
+			;;
+	esac
+done
+
+# CVS_REPO is manditory
+test -z $CVS_REPO && usage
+
+# Try to clone the cvs repot
+cd $TMP || exit 1
+CVS_TEXT=`cvs -Q -d:pserver:$CVS_REPO co $CVS_MODULE 2>&1`
+CVS_TEXT=`echo $CVS_TEXT | sed "s/\n/ /g"`
+if [ $? -ne 0 ]; then
+	# Something went wrong, print out the cvs text
+	nag_err "$CVS_TEXT"
+fi
+
+# Check if we are supposed to be looking for a file
+if [ -z $FILE ]; then
+	# Not looking for a file
+	nag_ok "$CVS_TEXT - CVS repo $CVS_REPO checked out"
+fi
+
+# If we're here, we also need a file
+if [ -f $TMP/$FILE ]; then
+	nag_ok "$CVS_TEXT - File $FILE found in CVS repo $CVS_REPO"
+else
+	nag_err "File $FILE not found! - $CVS_TEXT"
+fi
