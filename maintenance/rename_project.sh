@@ -30,43 +30,43 @@ exit 1;
 
 from=$1
 if [ -z "$from" ]; then usage; fi
-if ! ssh root@vcs-noshell.in.sv.gnu.org getent group "$from" > /dev/null ; then echo "$from doesn't exist."; exit 2; fi
+if ! ssh root@vcs.sv.gnu.org getent group "$from" > /dev/null ; then echo "$from doesn't exist."; exit 2; fi
 
 to=$2
 if [ -z "$to" ]; then usage; fi
-if ssh root@vcs-noshell.in.sv.gnu.org getent group "$to" > /dev/null ; then echo "$to already exists."; exit 2; fi
+if ssh root@vcs.sv.gnu.org getent group "$to" > /dev/null ; then echo "$to already exists."; exit 2; fi
 
 ##
 # CVS
 ##
 
 # Sources
-ssh root@vcs-noshell.in.sv.gnu.org mv /srv/cvs/sources/$from /srv/cvs/sources/$to &&
-ssh root@vcs-noshell.in.sv.gnu.org mv /srv/cvs/sources/$to/$from /srv/cvs/sources/$to/$to
-ssh root@vcs-noshell.in.sv.gnu.org mv /var/lock/cvs/sources/$from /var/lock/cvs/sources/$to &&
-ssh root@vcs-noshell.in.sv.gnu.org mv /var/lock/cvs/sources/$to/$from /var/lock/cvs/sources/$to/$to
+ssh root@vcs.sv.gnu.org mv /srv/cvs/sources/$from /srv/cvs/sources/$to &&
+ssh root@vcs.sv.gnu.org mv /srv/cvs/sources/$to/$from /srv/cvs/sources/$to/$to
+ssh root@vcs.sv.gnu.org mv /var/lock/cvs/sources/$from /var/lock/cvs/sources/$to &&
+ssh root@vcs.sv.gnu.org mv /var/lock/cvs/sources/$to/$from /var/lock/cvs/sources/$to/$to
 
-ssh root@vcs-noshell.in.sv.gnu.org chattr -i /srv/cvs/sources/$to/CVSROOT
-ssh root@vcs-noshell.in.sv.gnu.org sed -i -e \""s:\(^LockDir=/var/lock/cvs/sources/\)$from:\1$to:"\" \
+ssh root@vcs.sv.gnu.org chattr -i /srv/cvs/sources/$to/CVSROOT
+ssh root@vcs.sv.gnu.org sed -i -e \""s:\(^LockDir=/var/lock/cvs/sources/\)$from:\1$to:"\" \
   /srv/cvs/sources/$to/CVSROOT/config
-ssh root@vcs-noshell.in.sv.gnu.org chattr +i /srv/cvs/sources/$to/CVSROOT
+ssh root@vcs.sv.gnu.org chattr +i /srv/cvs/sources/$to/CVSROOT
 
 # Web
-ssh root@vcs-noshell.in.sv.gnu.org mv /srv/cvs/web/$from /srv/cvs/web/$to &&
-ssh root@vcs-noshell.in.sv.gnu.org mv /srv/cvs/web/$to/$from /srv/cvs/web/$to/$to
-ssh root@vcs-noshell.in.sv.gnu.org mv /var/lock/cvs/web/$from /var/lock/cvs/web/$to &&
-ssh root@vcs-noshell.in.sv.gnu.org mv /var/lock/cvs/web/$to/$from /var/lock/cvs/web/$to/$to
+ssh root@vcs.sv.gnu.org mv /srv/cvs/web/$from /srv/cvs/web/$to &&
+ssh root@vcs.sv.gnu.org mv /srv/cvs/web/$to/$from /srv/cvs/web/$to/$to
+ssh root@vcs.sv.gnu.org mv /var/lock/cvs/web/$from /var/lock/cvs/web/$to &&
+ssh root@vcs.sv.gnu.org mv /var/lock/cvs/web/$to/$from /var/lock/cvs/web/$to/$to
 
-ssh root@vcs-noshell.in.sv.gnu.org chattr -i /srv/cvs/web/$to/CVSROOT
-ssh root@vcs-noshell.in.sv.gnu.org sed -i -e \""s:\(^LockDir=/var/lock/cvs/web/\)$from:\1$to:"\" \
+ssh root@vcs.sv.gnu.org chattr -i /srv/cvs/web/$to/CVSROOT
+ssh root@vcs.sv.gnu.org sed -i -e \""s:\(^LockDir=/var/lock/cvs/web/\)$from:\1$to:"\" \
   /srv/cvs/web/$to/CVSROOT/config
-ssh root@vcs-noshell.in.sv.gnu.org chattr +i /srv/cvs/web/$to/CVSROOT
+ssh root@vcs.sv.gnu.org chattr +i /srv/cvs/web/$to/CVSROOT
 
 ##
 # Download
 ##
 
-ssh root@sftp.in.sv.gnu.org mv /srv/download/$from /srv/download/$to
+ssh root@download.sv.gnu.org mv /srv/download/$from /srv/download/$to
 
 ## GPG Keyring
 #from_first=`echo $from | cut -b1`
@@ -82,45 +82,40 @@ ssh root@sftp.in.sv.gnu.org mv /srv/download/$from /srv/download/$to
 # SVN
 ##
 
-ssh root@vcs-noshell.in.sv.gnu.org mv /srv/svn/$from /srv/svn/$to
+ssh root@vcs.sv.gnu.org mv /srv/svn/$from /srv/svn/$to
 
 ##
 # Git
 ##
 
-ssh root@vcs-noshell.in.sv.gnu.org mv /srv/git/$from.git /srv/git/$to.git &&
-ssh root@vcs-noshell.in.sv.gnu.org mv /srv/git/$from /srv/git/$to
+ssh root@vcs.sv.gnu.org mv /srv/git/$from.git /srv/git/$to.git &&
+ssh root@vcs.sv.gnu.org mv /srv/git/$from /srv/git/$to
 
 ##
 # Hg
 ##
 
-ssh root@vcs-noshell.in.sv.gnu.org mv /srv/hg/$from /srv/hg/$to
+ssh root@vcs.sv.gnu.org mv /srv/hg/$from /srv/hg/$to
 
 ##
 # Arch
 ##
 
-ssh root@sftp.in.sv.gnu.org mv /srv/arch/$from /srv/arch/$to
+ssh root@download.sv.gnu.org mv /srv/arch/$from /srv/arch/$to
 
 ##
 # bzr
 ##
 
-ssh root@sftp.in.sv.gnu.org mv /srv/bzr/$from /srv/bzr/$to
+ssh root@download.sv.gnu.org mv /srv/bzr/$from /srv/bzr/$to
 
 
 ###
 # TODO
 ##
-
-# rename the project groups in /etc/group
-# Not necessary since we use libnss-mysql-bg
-#vnamespace -e $accounts_xid chroot /vservers/accounts groupmod -n $to $from
-
 # rename the group name in the Savannah DB
 # TODO: error handling?
-ssh root@internal.in.sv.gnu.org "mysql savane -e \"UPDATE groups SET unix_group_name='$to' WHERE unix_group_name='$from';\""
+ssh root@internal.sv.gnu.org "mysql savane -e \"UPDATE groups SET unix_group_name='$to' WHERE unix_group_name='$from';\""
 
 # TODO: GNU|www.gnu.org|translation-team or non-GNU|GUG?
 echo curl http://www.gnu.org/new-savannah-project/new.py -F type='gnu|non-gnu' -F project=$to
